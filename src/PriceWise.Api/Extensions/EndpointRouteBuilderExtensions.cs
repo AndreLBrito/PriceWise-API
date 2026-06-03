@@ -1,3 +1,4 @@
+using PriceWise.Api.Features.Authentication;
 using PriceWise.Api.Features.Health;
 using PriceWise.Api.Features.System;
 
@@ -8,6 +9,7 @@ public static class EndpointRouteBuilderExtensions
     public static IEndpointRouteBuilder MapApiEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapHealthEndpoints();
+        app.MapAuthenticationEndpoints();
         app.MapSystemEndpoints();
 
         return app;

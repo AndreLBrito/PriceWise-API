@@ -1,13 +1,13 @@
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace PriceWise.Tests.Integration;
 
-public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+[Collection(IntegrationTestCollection.Name)]
+public sealed class HealthEndpointTests
 {
-    private readonly WebApplicationFactory<Program> factory;
+    private readonly PriceWiseWebApplicationFactory factory;
 
-    public HealthEndpointTests(WebApplicationFactory<Program> factory)
+    public HealthEndpointTests(PriceWiseWebApplicationFactory factory)
     {
         this.factory = factory;
     }

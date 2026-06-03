@@ -1,6 +1,6 @@
 # PriceWise API
 
-PriceWise API is a portfolio project for product price monitoring and price history.
+A PriceWise API e um projeto de portfolio para monitoramento de precos de produtos e historico de precos.
 
 ## Stack
 
@@ -21,22 +21,22 @@ PriceWise API is a portfolio project for product price monitoring and price hist
 
 ```text
 src/
-├── PriceWise.Api
-├── PriceWise.Application
-├── PriceWise.Domain
-├── PriceWise.Infrastructure
-└── PriceWise.Tests
+|-- PriceWise.Api
+|-- PriceWise.Application
+|-- PriceWise.Domain
+|-- PriceWise.Infrastructure
+`-- PriceWise.Tests
 ```
 
 ## Running locally
 
-Start PostgreSQL:
+Inicie o PostgreSQL:
 
 ```powershell
 docker compose up -d
 ```
 
-Run the API:
+Execute a API:
 
 ```powershell
 dotnet run --project src/PriceWise.Api/PriceWise.Api.csproj
@@ -48,11 +48,11 @@ Health check:
 GET /health
 ```
 
-Scalar documentation is available in development at `/scalar`.
+A documentacao do Scalar esta disponivel em ambiente de desenvolvimento em `/scalar`.
 
 ## Development
 
-Build the solution:
+Compile a solution:
 
 ```powershell
 dotnet build PriceWise.slnx

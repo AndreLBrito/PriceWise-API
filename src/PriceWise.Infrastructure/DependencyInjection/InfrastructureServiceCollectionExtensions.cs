@@ -39,6 +39,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IRefreshTokenProvider, RefreshTokenProvider>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IStoreRepository, StoreRepository>();
+        services.AddScoped<IPriceHistoryRepository, PriceHistoryRepository>();
 
         services.AddFluentMigratorCore()
             .ConfigureRunner(runner => runner

@@ -1,8 +1,8 @@
-using System.Data;
 using FluentMigrator.Runner;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using PriceWise.Application.Abstractions.Data;
 using PriceWise.Infrastructure.Database;
 
 namespace PriceWise.Infrastructure.DependencyInjection;
@@ -18,10 +18,9 @@ public static class InfrastructureServiceCollectionExtensions
             ConnectionString = configuration[$"{DatabaseOptions.SectionName}:ConnectionString"] ?? string.Empty
         };
 
+        services.AddSingleton(databaseOptions);
         services.AddSingleton(_ => NpgsqlDataSource.Create(databaseOptions.ConnectionString));
-        services.AddScoped<IDbConnection>(provider => provider
-            .GetRequiredService<NpgsqlDataSource>()
-            .OpenConnection());
+        services.AddSingleton<IDbConnectionFactory, NpgsqlConnectionFactory>();
 
         services.AddFluentMigratorCore()
             .ConfigureRunner(runner => runner

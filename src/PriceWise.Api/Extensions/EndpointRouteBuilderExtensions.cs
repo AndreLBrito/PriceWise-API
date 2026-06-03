@@ -1,5 +1,8 @@
 using PriceWise.Api.Features.Authentication;
 using PriceWise.Api.Features.Health;
+using PriceWise.Api.Features.PriceHistories;
+using PriceWise.Api.Features.Products;
+using PriceWise.Api.Features.Stores;
 using PriceWise.Api.Features.System;
 
 namespace PriceWise.Api.Extensions;
@@ -10,6 +13,9 @@ public static class EndpointRouteBuilderExtensions
     {
         app.MapHealthEndpoints();
         app.MapAuthenticationEndpoints();
+        app.MapProductEndpoints();
+        app.MapStoreEndpoints();
+        app.MapPriceHistoryEndpoints();
         app.MapSystemEndpoints();
 
         return app;

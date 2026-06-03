@@ -29,4 +29,9 @@ public abstract class BaseEntity : IAuditableEntity
         UpdatedAtUtc = DateTime.UtcNow;
         UpdatedBy = updatedBy;
     }
+
+    protected void SetCreatedAt(DateTime createdAtUtc)
+    {
+        CreatedAtUtc = createdAtUtc;
+    }
 }

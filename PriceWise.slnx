@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PriceWise.Api/PriceWise.Api.csproj" />
+    <Project Path="src/PriceWise.Application/PriceWise.Application.csproj" />
+    <Project Path="src/PriceWise.Domain/PriceWise.Domain.csproj" />
+    <Project Path="src/PriceWise.Infrastructure/PriceWise.Infrastructure.csproj" />
+    <Project Path="src/PriceWise.Tests/PriceWise.Tests.csproj" />
+  </Folder>
+</Solution>

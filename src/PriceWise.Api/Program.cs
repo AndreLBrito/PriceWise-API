@@ -17,6 +17,7 @@ try
         .Enrich.FromLogContext());
 
     builder.Services.AddOpenApi();
+    builder.Services.AddApi();
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddApiAuthentication(builder.Configuration);
@@ -31,6 +32,7 @@ try
     }
 
     app.UseSerilogRequestLogging();
+    app.UseExceptionHandler();
     app.UseAuthentication();
     app.UseAuthorization();
 

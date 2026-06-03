@@ -34,4 +34,9 @@ public abstract class BaseEntity : IAuditableEntity
     {
         CreatedAtUtc = createdAtUtc;
     }
+
+    protected void SetUpdatedAt(DateTime? updatedAtUtc)
+    {
+        UpdatedAtUtc = updatedAtUtc;
+    }
 }

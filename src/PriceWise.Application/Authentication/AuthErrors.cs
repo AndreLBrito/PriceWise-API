@@ -6,13 +6,13 @@ public static class AuthErrors
 {
     public static readonly Error EmailAlreadyRegistered = new(
         "Auth.EmailAlreadyRegistered",
-        "Email is already registered.");
+        "E-mail já cadastrado.");
 
     public static readonly Error InvalidCredentials = new(
         "Auth.InvalidCredentials",
-        "Invalid email or password.");
+        "E-mail ou senha inválidos.");
 
     public static readonly Error InvalidRefreshToken = new(
         "Auth.InvalidRefreshToken",
-        "Invalid refresh token.");
+        "Refresh token inválido.");
 }

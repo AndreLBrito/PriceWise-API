@@ -8,6 +8,7 @@ public sealed class RefreshTokenRequestValidator : AbstractValidator<RefreshToke
     public RefreshTokenRequestValidator()
     {
         RuleFor(request => request.RefreshToken)
-            .NotEmpty();
+            .NotEmpty()
+            .WithMessage("O refresh token é obrigatório.");
     }
 }

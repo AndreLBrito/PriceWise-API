@@ -21,6 +21,6 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
         var content = await response.Content.ReadAsStringAsync();
 
         response.IsSuccessStatusCode.Should().BeTrue();
-        content.Should().Contain("Healthy");
+        content.Should().Contain("Saudável");
     }
 }

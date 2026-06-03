@@ -9,10 +9,14 @@ public sealed class LoginRequestValidator : AbstractValidator<LoginRequest>
     {
         RuleFor(request => request.Email)
             .NotEmpty()
+            .WithMessage("O e-mail é obrigatório.")
             .EmailAddress()
-            .MaximumLength(254);
+            .WithMessage("O e-mail informado é inválido.")
+            .MaximumLength(254)
+            .WithMessage("O e-mail deve ter no máximo 254 caracteres.");
 
         RuleFor(request => request.Password)
-            .NotEmpty();
+            .NotEmpty()
+            .WithMessage("A senha é obrigatória.");
     }
 }

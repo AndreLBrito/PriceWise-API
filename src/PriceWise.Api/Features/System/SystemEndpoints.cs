@@ -8,7 +8,7 @@ public static class SystemEndpoints
     public static IEndpointRouteBuilder MapSystemEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/system")
-            .WithTags("System");
+            .WithTags("Sistema");
 
         group.MapGet("/info", (IHostEnvironment environment) =>
             {
@@ -22,7 +22,7 @@ public static class SystemEndpoints
                 return Results.Ok(ApiResponse<SystemInfoResponse>.Ok(response));
             })
             .WithName("GetSystemInfo")
-            .WithSummary("Returns system information");
+            .WithSummary("Retorna informações do sistema");
 
         return app;
     }

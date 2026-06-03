@@ -11,23 +11,23 @@ public static class AuthenticationEndpoints
     public static IEndpointRouteBuilder MapAuthenticationEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/auth")
-            .WithTags("Authentication");
+            .WithTags("Autenticação");
 
         group.MapPost("/register", RegisterAsync)
             .WithName("Register")
-            .WithSummary("Registers a new user");
+            .WithSummary("Cadastra um novo usuário");
 
         group.MapPost("/login", LoginAsync)
             .WithName("Login")
-            .WithSummary("Authenticates a user");
+            .WithSummary("Autentica um usuário");
 
         group.MapPost("/refresh-token", RefreshTokenAsync)
             .WithName("RefreshToken")
-            .WithSummary("Refreshes access and refresh tokens");
+            .WithSummary("Renova o access token e o refresh token");
 
         group.MapPost("/logout", LogoutAsync)
             .WithName("Logout")
-            .WithSummary("Revokes a refresh token");
+            .WithSummary("Revoga um refresh token");
 
         return app;
     }

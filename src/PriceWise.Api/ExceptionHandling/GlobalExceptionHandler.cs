@@ -24,7 +24,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
 
         var response = ApiResponse<object>.Fail(
             "InternalServerError",
-            "An unexpected error occurred.");
+            "Ocorreu um erro inesperado.");
 
         await httpContext.Response.WriteAsJsonAsync(response, cancellationToken);
 

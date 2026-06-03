@@ -7,11 +7,11 @@ public static class HealthEndpoints
     public static IEndpointRouteBuilder MapHealthEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/health")
-            .WithTags("Health");
+            .WithTags("Saúde");
 
-        group.MapGet("/", () => Results.Ok(ApiResponse<HealthResponse>.Ok(new HealthResponse("Healthy"))))
+        group.MapGet("/", () => Results.Ok(ApiResponse<HealthResponse>.Ok(new HealthResponse("Saudável"))))
             .WithName("GetHealth")
-            .WithSummary("Returns the API health status");
+            .WithSummary("Retorna o status de saúde da API");
 
         return app;
     }

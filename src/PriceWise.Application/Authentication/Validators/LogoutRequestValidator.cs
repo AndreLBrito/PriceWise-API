@@ -8,6 +8,7 @@ public sealed class LogoutRequestValidator : AbstractValidator<LogoutRequest>
     public LogoutRequestValidator()
     {
         RuleFor(request => request.RefreshToken)
-            .NotEmpty();
+            .NotEmpty()
+            .WithMessage("O refresh token é obrigatório.");
     }
 }

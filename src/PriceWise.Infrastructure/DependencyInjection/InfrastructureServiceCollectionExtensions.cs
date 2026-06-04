@@ -42,6 +42,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IStoreRepository, StoreRepository>();
         services.AddScoped<IPriceHistoryRepository, PriceHistoryRepository>();
+        services.AddScoped<IPriceAlertRepository, PriceAlertRepository>();
+        services.AddScoped<IAlertNotificationRepository, AlertNotificationRepository>();
 
         services.AddFluentMigratorCore()
             .ConfigureRunner(runner => runner

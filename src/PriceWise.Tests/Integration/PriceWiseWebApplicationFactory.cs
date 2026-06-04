@@ -66,7 +66,8 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLife
                 ["PriceCheck:Enabled"] = "false",
                 ["Redis:Enabled"] = "false",
                 ["Telemetry:Enabled"] = "false",
-                ["RateLimiting:Enabled"] = "false"
+                ["RateLimiting:Enabled"] = "false",
+                ["DataSeed:Enabled"] = "false"
             });
         });
 

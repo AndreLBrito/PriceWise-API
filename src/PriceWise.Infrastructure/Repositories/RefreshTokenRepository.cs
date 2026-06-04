@@ -56,6 +56,27 @@ public sealed class RefreshTokenRepository : IRefreshTokenRepository
         await connection.ExecuteAsync(new CommandDefinition(sql, refreshToken, cancellationToken: cancellationToken));
     }
 
+    public async Task RevokeActiveByUserIdAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            update refresh_tokens
+            set revoked_at_utc = @RevokedAtUtc,
+                updated_at_utc = @RevokedAtUtc
+            where user_id = @UserId
+              and revoked_at_utc is null
+              and expires_at_utc > @RevokedAtUtc
+            """;
+
+        var revokedAtUtc = DateTime.UtcNow;
+        using var connection = await connectionFactory.CreateConnectionAsync(cancellationToken);
+        await connection.ExecuteAsync(new CommandDefinition(
+            sql,
+            new { UserId = userId, RevokedAtUtc = revokedAtUtc },
+            cancellationToken: cancellationToken));
+    }
+
     private sealed record RefreshTokenRow(
         Guid Id,
         Guid UserId,

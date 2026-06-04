@@ -6,12 +6,13 @@ using PriceWise.Application.Abstractions.Auth;
 using PriceWise.Application.Abstractions.Data;
 using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Repositories;
+using PriceWise.Application.Authentication;
+using PriceWise.Application.Exports;
 using PriceWise.Infrastructure.Authentication;
 using PriceWise.Infrastructure.Database;
 using PriceWise.Infrastructure.DataSeeding;
 using PriceWise.Infrastructure.Notifications;
 using PriceWise.Infrastructure.Repositories;
-using PriceWise.Application.Exports;
 
 namespace PriceWise.Infrastructure.DependencyInjection;
 
@@ -40,6 +41,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddCacheInfrastructure(configuration);
         services.AddSingleton<IDbConnectionFactory, NpgsqlConnectionFactory>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
+        services.Configure<AuthenticationSecurityOptions>(options =>
+        {
+            options.MaxFailedLoginAttempts = ReadInt(configuration, $"{AuthenticationSecurityOptions.SectionName}:MaxFailedLoginAttempts", 5);
+            options.LockoutMinutes = ReadInt(configuration, $"{AuthenticationSecurityOptions.SectionName}:LockoutMinutes", 15);
+        });
         services.AddSingleton<IAccessTokenProvider, JwtTokenProvider>();
         services.AddSingleton<IRefreshTokenProvider, RefreshTokenProvider>();
         services.AddScoped<IUserRepository, UserRepository>();

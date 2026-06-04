@@ -57,6 +57,20 @@ public static class InfrastructureServiceCollectionExtensions
             options.MaxRetryAttempts = ReadInt(configuration, $"{WebhookNotificationOptions.SectionName}:MaxRetryAttempts", 3);
         });
         services.AddHttpClient<IWebhookNotificationSender, WebhookNotificationSender>();
+        services.Configure<EmailNotificationOptions>(options =>
+        {
+            options.Enabled = ReadBool(configuration, $"{EmailNotificationOptions.SectionName}:Enabled", false);
+            options.Host = configuration[$"{EmailNotificationOptions.SectionName}:Host"] ?? "localhost";
+            options.Port = ReadInt(configuration, $"{EmailNotificationOptions.SectionName}:Port", 1025);
+            options.UseSsl = ReadBool(configuration, $"{EmailNotificationOptions.SectionName}:UseSsl", false);
+            options.UserName = configuration[$"{EmailNotificationOptions.SectionName}:UserName"];
+            options.Password = configuration[$"{EmailNotificationOptions.SectionName}:Password"];
+            options.FromName = configuration[$"{EmailNotificationOptions.SectionName}:FromName"] ?? "PriceWise";
+            options.FromEmail = configuration[$"{EmailNotificationOptions.SectionName}:FromEmail"] ?? "noreply@pricewise.local";
+            options.TimeoutInSeconds = ReadInt(configuration, $"{EmailNotificationOptions.SectionName}:TimeoutInSeconds", 10);
+            options.MaxRetryAttempts = ReadInt(configuration, $"{EmailNotificationOptions.SectionName}:MaxRetryAttempts", 3);
+        });
+        services.AddScoped<ISmtpEmailClient, MailKitSmtpEmailClient>();
         services.AddScoped<IEmailNotificationSender, EmailNotificationSender>();
         services.AddPriceCheckBackgroundJobs(configuration);
         services.AddDataSeed(configuration);

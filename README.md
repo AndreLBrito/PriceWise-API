@@ -34,16 +34,20 @@ src/
 
 ## Running locally
 
-Inicie o PostgreSQL:
+Suba o ambiente completo com Docker Compose:
 
 ```powershell
-docker compose up -d
+docker compose up --build
 ```
 
-Execute a API:
+Ou use os scripts de inicializacao, que criam um `.env` local a partir do `.env.example` quando necessario:
 
 ```powershell
-dotnet run --project src/PriceWise.Api/PriceWise.Api.csproj
+.\start.ps1
+```
+
+```bash
+./start.sh
 ```
 
 Health check:
@@ -53,6 +57,18 @@ GET /health
 ```
 
 A documentacao do Scalar esta disponivel em ambiente de desenvolvimento em `/scalar`.
+
+Servicos locais:
+
+- API: `http://localhost:8080`
+- Scalar: `http://localhost:8080/scalar`
+- Jaeger: `http://localhost:16686`
+- PostgreSQL: `localhost:5432`, database `pricewise`
+- Redis: `localhost:6379`
+
+As variaveis de ambiente ficam documentadas em `.env.example`. Para customizar credenciais, portas, JWT, Redis ou telemetria, crie um arquivo `.env` local.
+
+O container `pricewise-api` executa as migrations automaticamente durante a inicializacao. O `docker-compose.yml` aguarda PostgreSQL e Redis ficarem saudaveis antes de iniciar a API.
 
 ## Observabilidade
 
@@ -70,6 +86,7 @@ A API possui observabilidade com OpenTelemetry para traces e metricas. A configu
 ```
 
 Use `Exporter: Console` para visualizar traces e metricas no terminal durante o desenvolvimento. Use `Exporter: OTLP` para enviar dados para um collector compativel com OpenTelemetry.
+No ambiente Docker Compose, o exporter OTLP aponta para o Jaeger em `http://jaeger:4317`.
 
 Endpoint de informacoes:
 

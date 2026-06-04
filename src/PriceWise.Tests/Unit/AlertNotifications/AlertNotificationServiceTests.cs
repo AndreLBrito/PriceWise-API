@@ -1,7 +1,10 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.AlertNotifications;
 using PriceWise.Domain.Entities;
+using PriceWise.Domain.Enums;
 
 namespace PriceWise.Tests.Unit.AlertNotifications;
 
@@ -15,9 +18,7 @@ public sealed class AlertNotificationServiceTests
         var priceHistory = PriceHistory.Create(userId, productId, Guid.NewGuid(), 90, "BRL", DateTime.UtcNow, null);
         var priceAlert = PriceAlert.Create(userId, productId, 100);
         var notificationRepository = new InMemoryAlertNotificationRepository();
-        var service = new AlertNotificationService(
-            notificationRepository,
-            new InMemoryPriceAlertRepository(priceAlert));
+        var service = CreateService(notificationRepository, new InMemoryPriceAlertRepository(priceAlert));
 
         await service.CheckPriceAlertsAsync(priceHistory);
 
@@ -35,9 +36,7 @@ public sealed class AlertNotificationServiceTests
         var priceHistory = PriceHistory.Create(userId, productId, Guid.NewGuid(), 110, "BRL", DateTime.UtcNow, null);
         var priceAlert = PriceAlert.Create(userId, productId, 100);
         var notificationRepository = new InMemoryAlertNotificationRepository();
-        var service = new AlertNotificationService(
-            notificationRepository,
-            new InMemoryPriceAlertRepository(priceAlert));
+        var service = CreateService(notificationRepository, new InMemoryPriceAlertRepository(priceAlert));
 
         await service.CheckPriceAlertsAsync(priceHistory);
 
@@ -52,14 +51,62 @@ public sealed class AlertNotificationServiceTests
         var priceHistory = PriceHistory.Create(userId, productId, Guid.NewGuid(), 90, "BRL", DateTime.UtcNow, null);
         var priceAlert = PriceAlert.Create(userId, productId, 100);
         var notificationRepository = new InMemoryAlertNotificationRepository();
-        var service = new AlertNotificationService(
-            notificationRepository,
-            new InMemoryPriceAlertRepository(priceAlert));
+        var service = CreateService(notificationRepository, new InMemoryPriceAlertRepository(priceAlert));
 
         await service.CheckPriceAlertsAsync(priceHistory);
         await service.CheckPriceAlertsAsync(priceHistory);
 
         notificationRepository.Notifications.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task CheckPriceAlertsAsyncSendsNotificationToActiveChannels()
+    {
+        var userId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var priceHistory = PriceHistory.Create(userId, productId, Guid.NewGuid(), 90, "BRL", DateTime.UtcNow, null);
+        var priceAlert = PriceAlert.Create(userId, productId, 100);
+        var notificationRepository = new InMemoryAlertNotificationRepository();
+        var channelRepository = new InMemoryNotificationChannelRepository(
+            NotificationChannel.Create(
+                userId,
+                NotificationChannelType.Webhook,
+                "Webhook",
+                "https://example.com/webhook"),
+            NotificationChannel.Create(
+                userId,
+                NotificationChannelType.Email,
+                "Email",
+                "user@example.com"));
+        var webhookSender = new SpyWebhookNotificationSender();
+        var emailSender = new SpyEmailNotificationSender();
+        var service = CreateService(
+            notificationRepository,
+            new InMemoryPriceAlertRepository(priceAlert),
+            channelRepository,
+            webhookSender,
+            emailSender);
+
+        await service.CheckPriceAlertsAsync(priceHistory);
+
+        webhookSender.Deliveries.Should().ContainSingle();
+        emailSender.Deliveries.Should().ContainSingle();
+    }
+
+    private static AlertNotificationService CreateService(
+        IAlertNotificationRepository notificationRepository,
+        IPriceAlertRepository priceAlertRepository,
+        INotificationChannelRepository? notificationChannelRepository = null,
+        IWebhookNotificationSender? webhookNotificationSender = null,
+        IEmailNotificationSender? emailNotificationSender = null)
+    {
+        return new AlertNotificationService(
+            notificationRepository,
+            priceAlertRepository,
+            notificationChannelRepository ?? new InMemoryNotificationChannelRepository(),
+            webhookNotificationSender ?? new SpyWebhookNotificationSender(),
+            emailNotificationSender ?? new SpyEmailNotificationSender(),
+            NullLogger<AlertNotificationService>.Instance);
     }
 
     private sealed class InMemoryAlertNotificationRepository : IAlertNotificationRepository
@@ -194,6 +241,108 @@ public sealed class AlertNotificationServiceTests
 
         public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         {
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class InMemoryNotificationChannelRepository : INotificationChannelRepository
+    {
+        private readonly List<NotificationChannel> channels;
+
+        public InMemoryNotificationChannelRepository(params NotificationChannel[] channels)
+        {
+            this.channels = channels.ToList();
+        }
+
+        public Task<IReadOnlyCollection<NotificationChannel>> ListByUserIdAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default)
+        {
+            IReadOnlyCollection<NotificationChannel> result = channels
+                .Where(channel => channel.UserId == userId && channel.IsActive)
+                .ToArray();
+
+            return Task.FromResult(result);
+        }
+
+        public Task<IReadOnlyCollection<NotificationChannel>> ListActiveByUserIdAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default)
+        {
+            IReadOnlyCollection<NotificationChannel> result = channels
+                .Where(channel => channel.UserId == userId && channel.IsActive)
+                .ToArray();
+
+            return Task.FromResult(result);
+        }
+
+        public Task<NotificationChannel?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(channels.SingleOrDefault(channel => channel.Id == id && channel.IsActive));
+        }
+
+        public Task<NotificationChannel?> GetByIdAsync(
+            Guid id,
+            Guid userId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(channels.SingleOrDefault(channel =>
+                channel.Id == id && channel.UserId == userId && channel.IsActive));
+        }
+
+        public Task<NotificationChannel?> GetActiveByTypeAndDestinationAsync(
+            Guid userId,
+            NotificationChannelType type,
+            string destination,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(channels.SingleOrDefault(channel =>
+                channel.UserId == userId
+                && channel.Type == type
+                && channel.Destination == destination
+                && channel.IsActive));
+        }
+
+        public Task AddAsync(NotificationChannel entity, CancellationToken cancellationToken = default)
+        {
+            channels.Add(entity);
+
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateAsync(NotificationChannel entity, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            channels.RemoveAll(channel => channel.Id == id);
+
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class SpyWebhookNotificationSender : IWebhookNotificationSender
+    {
+        public List<NotificationDelivery> Deliveries { get; } = [];
+
+        public Task SendAsync(NotificationDelivery delivery, CancellationToken cancellationToken = default)
+        {
+            Deliveries.Add(delivery);
+
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class SpyEmailNotificationSender : IEmailNotificationSender
+    {
+        public List<NotificationDelivery> Deliveries { get; } = [];
+
+        public Task SendAsync(NotificationDelivery delivery, CancellationToken cancellationToken = default)
+        {
+            Deliveries.Add(delivery);
+
             return Task.CompletedTask;
         }
     }

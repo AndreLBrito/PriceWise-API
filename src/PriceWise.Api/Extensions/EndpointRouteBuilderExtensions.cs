@@ -2,7 +2,9 @@ using PriceWise.Api.Features.AlertNotifications;
 using PriceWise.Api.Features.Authentication;
 using PriceWise.Api.Features.Dashboard;
 using PriceWise.Api.Features.Health;
+using PriceWise.Api.Features.NotificationChannels;
 using PriceWise.Api.Features.PriceAlerts;
+using PriceWise.Api.Features.PriceChecks;
 using PriceWise.Api.Features.PriceHistories;
 using PriceWise.Api.Features.Products;
 using PriceWise.Api.Features.Stores;
@@ -20,6 +22,8 @@ public static class EndpointRouteBuilderExtensions
         app.MapStoreEndpoints();
         app.MapPriceHistoryEndpoints();
         app.MapPriceAlertEndpoints();
+        app.MapNotificationChannelEndpoints();
+        app.MapPriceCheckEndpoints();
         app.MapAlertNotificationEndpoints();
         app.MapDashboardEndpoints();
         app.MapSystemEndpoints();

@@ -4,9 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using PriceWise.Application.Abstractions.Auth;
 using PriceWise.Application.Abstractions.Data;
+using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Infrastructure.Authentication;
 using PriceWise.Infrastructure.Database;
+using PriceWise.Infrastructure.Notifications;
 using PriceWise.Infrastructure.Repositories;
 
 namespace PriceWise.Infrastructure.DependencyInjection;
@@ -45,6 +47,10 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IPriceAlertRepository, PriceAlertRepository>();
         services.AddScoped<IAlertNotificationRepository, AlertNotificationRepository>();
         services.AddScoped<IDashboardRepository, DashboardRepository>();
+        services.AddScoped<INotificationChannelRepository, NotificationChannelRepository>();
+        services.AddScoped<IWebhookNotificationSender, WebhookNotificationSender>();
+        services.AddScoped<IEmailNotificationSender, EmailNotificationSender>();
+        services.AddPriceCheckBackgroundJobs(configuration);
 
         services.AddFluentMigratorCore()
             .ConfigureRunner(runner => runner

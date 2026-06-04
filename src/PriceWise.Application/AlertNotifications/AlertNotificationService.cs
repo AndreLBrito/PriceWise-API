@@ -1,7 +1,10 @@
+using Microsoft.Extensions.Logging;
+using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.AlertNotifications.Dtos;
 using PriceWise.Application.Common;
 using PriceWise.Domain.Entities;
+using PriceWise.Domain.Enums;
 
 namespace PriceWise.Application.AlertNotifications;
 
@@ -9,13 +12,25 @@ public sealed class AlertNotificationService : IAlertNotificationService
 {
     private readonly IAlertNotificationRepository alertNotificationRepository;
     private readonly IPriceAlertRepository priceAlertRepository;
+    private readonly INotificationChannelRepository notificationChannelRepository;
+    private readonly IWebhookNotificationSender webhookNotificationSender;
+    private readonly IEmailNotificationSender emailNotificationSender;
+    private readonly ILogger<AlertNotificationService> logger;
 
     public AlertNotificationService(
         IAlertNotificationRepository alertNotificationRepository,
-        IPriceAlertRepository priceAlertRepository)
+        IPriceAlertRepository priceAlertRepository,
+        INotificationChannelRepository notificationChannelRepository,
+        IWebhookNotificationSender webhookNotificationSender,
+        IEmailNotificationSender emailNotificationSender,
+        ILogger<AlertNotificationService> logger)
     {
         this.alertNotificationRepository = alertNotificationRepository;
         this.priceAlertRepository = priceAlertRepository;
+        this.notificationChannelRepository = notificationChannelRepository;
+        this.webhookNotificationSender = webhookNotificationSender;
+        this.emailNotificationSender = emailNotificationSender;
+        this.logger = logger;
     }
 
     public async Task CheckPriceAlertsAsync(
@@ -48,6 +63,7 @@ public sealed class AlertNotificationService : IAlertNotificationService
                 priceAlert.TargetPrice);
 
             await alertNotificationRepository.AddAsync(notification, cancellationToken);
+            await SendNotificationAsync(notification, cancellationToken);
         }
     }
 
@@ -88,5 +104,41 @@ public sealed class AlertNotificationService : IAlertNotificationService
             notification.TriggeredAt,
             notification.CreatedAtUtc,
             notification.UpdatedAtUtc);
+    }
+
+    private async Task SendNotificationAsync(
+        AlertNotification notification,
+        CancellationToken cancellationToken)
+    {
+        var channels = await notificationChannelRepository.ListActiveByUserIdAsync(
+            notification.UserId,
+            cancellationToken);
+
+        foreach (var channel in channels)
+        {
+            try
+            {
+                var delivery = new NotificationDelivery(notification, channel);
+
+                if (channel.Type == NotificationChannelType.Webhook)
+                {
+                    await webhookNotificationSender.SendAsync(delivery, cancellationToken);
+                    continue;
+                }
+
+                if (channel.Type == NotificationChannelType.Email)
+                {
+                    await emailNotificationSender.SendAsync(delivery, cancellationToken);
+                }
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning(
+                    exception,
+                    "Falha ao notificar o canal {ChannelId} para a notificação de alerta {AlertNotificationId}.",
+                    channel.Id,
+                    notification.Id);
+            }
+        }
     }
 }

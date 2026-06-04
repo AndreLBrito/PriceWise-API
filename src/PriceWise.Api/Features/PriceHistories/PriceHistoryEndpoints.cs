@@ -1,6 +1,7 @@
 using FluentValidation;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
+using PriceWise.Api.RateLimiting;
 using PriceWise.Application.Common;
 using PriceWise.Application.PriceHistories;
 using PriceWise.Application.PriceHistories.Dtos;
@@ -15,7 +16,8 @@ public static class PriceHistoryEndpoints
             .WithTags("Histórico de preços")
             .WithName("CreatePriceHistory")
             .WithSummary("Registra um histórico de preço")
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .RequireRateLimiting(RateLimitPolicyNames.General);
 
         var group = app.MapGroup("/api/products/{productId:guid}/price-histories")
             .WithTags("Histórico de preços")

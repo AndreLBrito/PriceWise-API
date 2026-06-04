@@ -1,5 +1,6 @@
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
+using PriceWise.Api.RateLimiting;
 using PriceWise.Application.Common;
 using PriceWise.Application.PriceChecks;
 using PriceWise.Application.PriceChecks.Dtos;
@@ -17,11 +18,13 @@ public static class PriceCheckEndpoints
         // TODO: Restringir estes endpoints a usuários administradores quando o modelo de autorização existir.
         group.MapPost("/run", RunAsync)
             .WithName("RunPriceCheck")
-            .WithSummary("Executa manualmente a verificação simulada de preços");
+            .WithSummary("Executa manualmente a verificação simulada de preços")
+            .RequireRateLimiting(RateLimitPolicyNames.PriceCheck);
 
         group.MapGet("/status", GetStatusAsync)
             .WithName("GetPriceCheckStatus")
-            .WithSummary("Retorna o status da verificação automática de preços");
+            .WithSummary("Retorna o status da verificação automática de preços")
+            .RequireRateLimiting(RateLimitPolicyNames.General);
 
         return app;
     }

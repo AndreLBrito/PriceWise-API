@@ -22,6 +22,7 @@ try
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddApiAuthentication(builder.Configuration);
     builder.Services.AddAuthorization();
+    builder.Services.AddPriceWiseRateLimiting(builder.Configuration);
     builder.Services.AddPriceWiseOpenTelemetry(builder.Configuration, builder.Environment);
 
     var app = builder.Build();
@@ -36,6 +37,7 @@ try
     app.UseExceptionHandler();
     app.UseMiddleware<PriceWise.Api.Telemetry.CorrelationIdMiddleware>();
     app.UseAuthentication();
+    app.UseRateLimiter();
     app.UseAuthorization();
 
     app.MapApiEndpoints();

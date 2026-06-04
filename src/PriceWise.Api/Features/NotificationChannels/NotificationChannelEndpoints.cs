@@ -1,6 +1,7 @@
 using FluentValidation;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
+using PriceWise.Api.RateLimiting;
 using PriceWise.Application.Common;
 using PriceWise.Application.NotificationChannels;
 using PriceWise.Application.NotificationChannels.Dtos;
@@ -13,7 +14,8 @@ public static class NotificationChannelEndpoints
     {
         var group = app.MapGroup("/api/notification-channels")
             .WithTags("Canais de notificação")
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .RequireRateLimiting(RateLimitPolicyNames.General);
 
         group.MapPost("/", CreateAsync)
             .WithName("CreateNotificationChannel")

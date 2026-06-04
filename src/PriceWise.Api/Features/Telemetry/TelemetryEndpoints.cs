@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using PriceWise.Api.Common;
+using PriceWise.Api.RateLimiting;
 using PriceWise.Api.Telemetry;
 
 namespace PriceWise.Api.Features.Telemetry;
@@ -10,7 +11,8 @@ public static class TelemetryEndpoints
     {
         var group = app.MapGroup("/api/telemetry")
             .WithTags("Telemetria")
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .RequireRateLimiting(RateLimitPolicyNames.General);
 
         group.MapGet("/info", GetInfo)
             .WithName("GetTelemetryInfo")

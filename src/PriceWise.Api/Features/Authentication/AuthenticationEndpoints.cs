@@ -1,5 +1,7 @@
 using FluentValidation;
+using Microsoft.AspNetCore.RateLimiting;
 using PriceWise.Api.Common;
+using PriceWise.Api.RateLimiting;
 using PriceWise.Application.Authentication;
 using PriceWise.Application.Authentication.Dtos;
 using PriceWise.Application.Common;
@@ -15,15 +17,18 @@ public static class AuthenticationEndpoints
 
         group.MapPost("/register", RegisterAsync)
             .WithName("Register")
-            .WithSummary("Cadastra um novo usuário");
+            .WithSummary("Cadastra um novo usuário")
+            .RequireRateLimiting(RateLimitPolicyNames.Login);
 
         group.MapPost("/login", LoginAsync)
             .WithName("Login")
-            .WithSummary("Autentica um usuário");
+            .WithSummary("Autentica um usuário")
+            .RequireRateLimiting(RateLimitPolicyNames.Login);
 
         group.MapPost("/refresh-token", RefreshTokenAsync)
             .WithName("RefreshToken")
-            .WithSummary("Renova o access token e o refresh token");
+            .WithSummary("Renova o access token e o refresh token")
+            .RequireRateLimiting(RateLimitPolicyNames.RefreshToken);
 
         group.MapPost("/logout", LogoutAsync)
             .WithName("Logout")

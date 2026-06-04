@@ -63,6 +63,7 @@ Servicos locais:
 - API: `http://localhost:8080`
 - Scalar: `http://localhost:8080/scalar`
 - Jaeger: `http://localhost:16686`
+- Mailpit: `http://localhost:8025`
 - PostgreSQL: `localhost:5432`, database `pricewise`
 - Redis: `localhost:6379`
 
@@ -131,6 +132,43 @@ Exemplo de payload:
 ```
 
 Falhas de webhook sao registradas em log e nao interrompem a criacao da notificacao de alerta. Para desabilitar no Docker Compose, ajuste `WEBHOOK_NOTIFICATIONS_ENABLED=false`.
+
+## Email Notifications
+
+Quando uma `AlertNotification` e criada, canais ativos do tipo `Email` enviam uma mensagem SMTP para o e-mail configurado em `Destination`.
+
+Configuracao:
+
+```json
+"EmailNotifications": {
+  "Enabled": false,
+  "Host": "localhost",
+  "Port": 1025,
+  "UseSsl": false,
+  "UserName": "",
+  "Password": "",
+  "FromName": "PriceWise",
+  "FromEmail": "noreply@pricewise.local",
+  "TimeoutInSeconds": 10,
+  "MaxRetryAttempts": 3
+}
+```
+
+No Docker Compose, o SMTP local usa Mailpit:
+
+- SMTP: `mailpit:1025`
+- Interface web: `http://localhost:8025`
+
+Para testar localmente, habilite no `.env`:
+
+```env
+EMAIL_NOTIFICATIONS_ENABLED=true
+EMAIL_NOTIFICATIONS_HOST=mailpit
+EMAIL_NOTIFICATIONS_PORT=1025
+EMAIL_NOTIFICATIONS_USE_SSL=false
+```
+
+O e-mail possui versao HTML e texto puro, com produto, preco alvo, preco encontrado, data do disparo e link do produto quando disponivel. Falhas no SMTP sao registradas em log e nao interrompem a criacao da notificacao de alerta.
 
 ## Observabilidade
 

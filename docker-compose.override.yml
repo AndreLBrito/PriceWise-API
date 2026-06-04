@@ -1,0 +1,11 @@
+services:
+  pricewise-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Telemetry__Exporter: OTLP
+      Telemetry__OtlpEndpoint: http://jaeger:4317
+    volumes:
+      - ./src/PriceWise.Api/appsettings.json:/app/appsettings.json:ro

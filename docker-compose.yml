@@ -1,23 +1,88 @@
 services:
+  pricewise-api:
+    image: pricewise-api:local
+    container_name: pricewise-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_URLS: http://+:8080
+      Database__ConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB:-pricewise};Username=${POSTGRES_USER:-pricewise};Password=${POSTGRES_PASSWORD:-pricewise}
+      Redis__Enabled: ${REDIS_ENABLED:-true}
+      Redis__ConnectionString: redis:6379
+      Jwt__Issuer: ${JWT_ISSUER:-PriceWise}
+      Jwt__Audience: ${JWT_AUDIENCE:-PriceWise}
+      Jwt__Secret: ${JWT_SECRET:-pricewise-development-secret-key-change-me}
+      Jwt__AccessTokenExpirationMinutes: ${JWT_ACCESS_TOKEN_EXPIRATION_MINUTES:-60}
+      Jwt__RefreshTokenExpirationDays: ${JWT_REFRESH_TOKEN_EXPIRATION_DAYS:-7}
+      Telemetry__Enabled: ${TELEMETRY_ENABLED:-true}
+      Telemetry__ServiceName: ${TELEMETRY_SERVICE_NAME:-PriceWise.Api}
+      Telemetry__ServiceVersion: ${TELEMETRY_SERVICE_VERSION:-1.0.0}
+      Telemetry__Exporter: ${TELEMETRY_EXPORTER:-OTLP}
+      Telemetry__OtlpEndpoint: ${TELEMETRY_OTLP_ENDPOINT:-http://jaeger:4317}
+      Telemetry__EnableMetrics: ${TELEMETRY_ENABLE_METRICS:-true}
+      Telemetry__EnableTracing: ${TELEMETRY_ENABLE_TRACING:-true}
+      PriceCheck__Enabled: ${PRICE_CHECK_ENABLED:-true}
+      PriceCheck__IntervalInMinutes: ${PRICE_CHECK_INTERVAL_IN_MINUTES:-30}
+      PriceCheck__MaxProductsPerExecution: ${PRICE_CHECK_MAX_PRODUCTS_PER_EXECUTION:-50}
+      RateLimiting__Enabled: ${RATE_LIMITING_ENABLED:-true}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 5 bash -c \"exec 3<>/dev/tcp/127.0.0.1/8080; printf 'GET /health HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '200 OK' <&3\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   postgres:
     image: postgres:18-alpine
-    container_name: pricewise-postgres
+    container_name: postgres
     environment:
-      POSTGRES_DB: pricewise
-      POSTGRES_USER: pricewise
-      POSTGRES_PASSWORD: pricewise
+      POSTGRES_DB: ${POSTGRES_DB:-pricewise}
+      POSTGRES_USER: ${POSTGRES_USER:-pricewise}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pricewise}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pricewise-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: pricewise-redis
+    container_name: redis
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - pricewise-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    container_name: jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"
+      - "${JAEGER_OTLP_GRPC_PORT:-4317}:4317"
+      - "${JAEGER_OTLP_HTTP_PORT:-4318}:4318"
 
 volumes:
   pricewise-postgres-data:

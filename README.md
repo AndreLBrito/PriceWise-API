@@ -99,6 +99,39 @@ DATA_SEED_ENABLED=false
 
 O seed e idempotente, nao duplica dados em novas execucoes e nao roda em `Production`.
 
+## Webhook Notifications
+
+Quando uma `AlertNotification` e criada, canais ativos do tipo `Webhook` recebem um `POST` com `application/json` para a URL configurada em `Destination`.
+
+Configuracao:
+
+```json
+"WebhookNotifications": {
+  "Enabled": true,
+  "TimeoutInSeconds": 10,
+  "MaxRetryAttempts": 3
+}
+```
+
+Exemplo de payload:
+
+```json
+{
+  "notificationId": "50000000-0000-0000-0000-000000000001",
+  "userId": "10000000-0000-0000-0000-000000000001",
+  "productId": "20000000-0000-0000-0000-000000000001",
+  "priceAlertId": "30000000-0000-0000-0000-000000000001",
+  "priceHistoryId": "40000000-0000-0000-0000-000000000001",
+  "productName": "Notebook Demo",
+  "targetPrice": 100.00,
+  "triggeredPrice": 89.90,
+  "triggeredAt": "2026-06-04T10:30:00Z",
+  "message": "O produto Notebook Demo atingiu o preco de R$ 89,90. Alvo configurado: R$ 100,00."
+}
+```
+
+Falhas de webhook sao registradas em log e nao interrompem a criacao da notificacao de alerta. Para desabilitar no Docker Compose, ajuste `WEBHOOK_NOTIFICATIONS_ENABLED=false`.
+
 ## Observabilidade
 
 A API possui observabilidade com OpenTelemetry para traces e metricas. A configuracao fica em `appsettings.json`:

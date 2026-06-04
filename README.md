@@ -170,6 +170,42 @@ EMAIL_NOTIFICATIONS_USE_SSL=false
 
 O e-mail possui versao HTML e texto puro, com produto, preco alvo, preco encontrado, data do disparo e link do produto quando disponivel. Falhas no SMTP sao registradas em log e nao interrompem a criacao da notificacao de alerta.
 
+## Exportacoes CSV
+
+A API permite exportar os dados principais em CSV, sempre filtrando pelo usuario autenticado.
+
+Endpoints:
+
+- `GET /api/exports/products.csv`
+- `GET /api/exports/stores.csv`
+- `GET /api/exports/price-histories.csv`
+- `GET /api/exports/alert-notifications.csv`
+
+Filtros opcionais:
+
+- `startDate`
+- `endDate`
+- `productId`, quando aplicavel
+- `storeId`, quando aplicavel
+
+Exemplo autenticado:
+
+```bash
+curl -H "Authorization: Bearer {token}" \
+  "http://localhost:8080/api/exports/price-histories.csv?productId={productId}&startDate=2026-06-01"
+```
+
+Configuracao:
+
+```json
+"CsvExport": {
+  "MaxRows": 10000,
+  "DateFormat": "yyyy-MM-dd HH:mm:ss"
+}
+```
+
+O retorno usa `text/csv`, UTF-8, cabecalho na primeira linha e limite maximo configuravel por `CsvExport:MaxRows`.
+
 ## Observabilidade
 
 A API possui observabilidade com OpenTelemetry para traces e metricas. A configuracao fica em `appsettings.json`:

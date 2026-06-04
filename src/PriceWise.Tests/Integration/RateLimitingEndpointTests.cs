@@ -156,7 +156,8 @@ public sealed class RateLimitingEndpointTests
             audience: "PriceWise",
             claims:
             [
-                new Claim(JwtRegisteredClaimNames.Sub, userId.ToString())
+                new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+                new Claim(ClaimTypes.Role, "Admin")
             ],
             expires: DateTime.UtcNow.AddMinutes(10),
             signingCredentials: credentials);
@@ -186,12 +187,36 @@ public sealed class RateLimitingEndpointTests
             return Task.FromResult(Result.Success());
         }
 
+        public Task<Result<CurrentUserResponse>> GetMeAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Result<CurrentUserResponse>.Success(new CurrentUserResponse(
+                userId,
+                "Usuário Teste",
+                "user@example.com",
+                "User",
+                DateTime.UtcNow)));
+        }
+
+        public Task<Result> ChangePasswordAsync(
+            Guid userId,
+            ChangePasswordRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Result.Success());
+        }
+
+        public Task<Result> RevokeRefreshTokensAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Result.Success());
+        }
+
         private static AuthResponse CreateResponse()
         {
             return new AuthResponse(
                 Guid.NewGuid(),
                 "Usuário Teste",
                 "user@example.com",
+                "User",
                 "access-token",
                 "refresh-token",
                 DateTime.UtcNow.AddMinutes(10));

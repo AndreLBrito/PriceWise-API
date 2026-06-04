@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Options;
 using PriceWise.Application.Abstractions.Auth;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.Abstractions.Telemetry;
@@ -24,6 +25,7 @@ public sealed class AuthServiceTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Email.Should().Be("andre@test.com");
+        result.Value.Role.Should().Be("User");
         result.Value.AccessToken.Should().Be("access-token");
         result.Value.RefreshToken.Should().Be("refresh-token");
         userRepository.Users.Should().ContainSingle();
@@ -57,11 +59,137 @@ public sealed class AuthServiceTests
 
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Be(AuthErrors.InvalidCredentials);
+        userRepository.Users.Single().FailedLoginAttempts.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task LoginAsyncFailsWhenUserIsInactive()
+    {
+        var userRepository = new InMemoryUserRepository();
+        var service = CreateService(userRepository, new InMemoryRefreshTokenRepository());
+        var user = User.Create("Andre", "andre@test.com", "hashed-password123");
+        user.Deactivate();
+        await userRepository.AddAsync(user);
+
+        var result = await service.LoginAsync(new LoginRequest("andre@test.com", "password123"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(AuthErrors.UserInactive);
+    }
+
+    [Fact]
+    public async Task LoginAsyncLocksUserAfterConfiguredFailedAttempts()
+    {
+        var userRepository = new InMemoryUserRepository();
+        var service = CreateService(userRepository, new InMemoryRefreshTokenRepository(), maxFailedLoginAttempts: 2);
+        var user = User.Create("Andre", "andre@test.com", "hashed-password123");
+        await userRepository.AddAsync(user);
+
+        await service.LoginAsync(new LoginRequest("andre@test.com", "wrong-password"));
+        var result = await service.LoginAsync(new LoginRequest("andre@test.com", "wrong-password"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(AuthErrors.InvalidCredentials);
+        user.FailedLoginAttempts.Should().Be(2);
+        user.LockedUntilUtc.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task LoginAsyncResetsFailedAttemptsWhenCredentialsAreValid()
+    {
+        var userRepository = new InMemoryUserRepository();
+        var service = CreateService(userRepository, new InMemoryRefreshTokenRepository());
+        var user = User.Create("Andre", "andre@test.com", "hashed-password123");
+        user.RegisterFailedLogin(5, 15);
+        await userRepository.AddAsync(user);
+
+        var result = await service.LoginAsync(new LoginRequest("andre@test.com", "password123"));
+
+        result.IsSuccess.Should().BeTrue();
+        user.FailedLoginAttempts.Should().Be(0);
+        user.LockedUntilUtc.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RefreshTokenAsyncPreservesCurrentUserRole()
+    {
+        var userRepository = new InMemoryUserRepository();
+        var refreshTokenRepository = new InMemoryRefreshTokenRepository();
+        var service = CreateService(userRepository, refreshTokenRepository);
+        var user = User.CreateAdmin("Admin", "admin@test.com", "hashed-password123");
+        await userRepository.AddAsync(user);
+        await refreshTokenRepository.AddAsync(RefreshToken.Create(
+            user.Id,
+            "hashed-refresh-token",
+            DateTime.UtcNow.AddDays(1)));
+
+        var result = await service.RefreshTokenAsync(new RefreshTokenRequest("refresh-token"));
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Role.Should().Be("Admin");
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsyncFailsWhenCurrentPasswordIsInvalid()
+    {
+        var userRepository = new InMemoryUserRepository();
+        var service = CreateService(userRepository, new InMemoryRefreshTokenRepository());
+        var user = User.Create("Andre", "andre@test.com", "hashed-password123");
+        await userRepository.AddAsync(user);
+
+        var result = await service.ChangePasswordAsync(
+            user.Id,
+            new ChangePasswordRequest("wrong-password", "new-password123"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(AuthErrors.InvalidCurrentPassword);
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsyncChangesPasswordAndRevokesRefreshTokens()
+    {
+        var userRepository = new InMemoryUserRepository();
+        var refreshTokenRepository = new InMemoryRefreshTokenRepository();
+        var service = CreateService(userRepository, refreshTokenRepository);
+        var user = User.Create("Andre", "andre@test.com", "hashed-password123");
+        await userRepository.AddAsync(user);
+        await refreshTokenRepository.AddAsync(RefreshToken.Create(
+            user.Id,
+            "hashed-refresh-token",
+            DateTime.UtcNow.AddDays(1)));
+
+        var result = await service.ChangePasswordAsync(
+            user.Id,
+            new ChangePasswordRequest("password123", "new-password123"));
+
+        result.IsSuccess.Should().BeTrue();
+        user.PasswordHash.Should().Be("hashed-new-password123");
+        refreshTokenRepository.RefreshTokens.Should().OnlyContain(token => !token.IsActive);
+    }
+
+    [Fact]
+    public async Task RevokeRefreshTokensAsyncRevokesActiveTokens()
+    {
+        var userRepository = new InMemoryUserRepository();
+        var refreshTokenRepository = new InMemoryRefreshTokenRepository();
+        var service = CreateService(userRepository, refreshTokenRepository);
+        var user = User.Create("Andre", "andre@test.com", "hashed-password123");
+        await userRepository.AddAsync(user);
+        await refreshTokenRepository.AddAsync(RefreshToken.Create(
+            user.Id,
+            "hashed-refresh-token",
+            DateTime.UtcNow.AddDays(1)));
+
+        var result = await service.RevokeRefreshTokensAsync(user.Id);
+
+        result.IsSuccess.Should().BeTrue();
+        refreshTokenRepository.RefreshTokens.Should().OnlyContain(token => !token.IsActive);
     }
 
     private static AuthService CreateService(
         IUserRepository userRepository,
-        IRefreshTokenRepository refreshTokenRepository)
+        IRefreshTokenRepository refreshTokenRepository,
+        int maxFailedLoginAttempts = 5)
     {
         return new AuthService(
             userRepository,
@@ -69,7 +197,12 @@ public sealed class AuthServiceTests
             new TestPasswordHasher(),
             new TestAccessTokenProvider(),
             new TestRefreshTokenProvider(),
-            new NoOpApplicationTelemetry());
+            new NoOpApplicationTelemetry(),
+            Options.Create(new AuthenticationSecurityOptions
+            {
+                MaxFailedLoginAttempts = maxFailedLoginAttempts,
+                LockoutMinutes = 15
+            }));
     }
 
     private sealed class InMemoryUserRepository : IUserRepository
@@ -104,6 +237,22 @@ public sealed class AuthServiceTests
 
             return Task.CompletedTask;
         }
+
+        public Task<IReadOnlyCollection<User>> ListAsync(
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyCollection<User>>(Users
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToArray());
+        }
+
+        public Task<int> CountAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Users.Count);
+        }
     }
 
     private sealed class InMemoryRefreshTokenRepository : IRefreshTokenRepository
@@ -126,6 +275,16 @@ public sealed class AuthServiceTests
 
         public Task UpdateAsync(RefreshToken refreshToken, CancellationToken cancellationToken = default)
         {
+            return Task.CompletedTask;
+        }
+
+        public Task RevokeActiveByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            foreach (var token in RefreshTokens.Where(token => token.UserId == userId && token.IsActive))
+            {
+                token.Revoke();
+            }
+
             return Task.CompletedTask;
         }
     }

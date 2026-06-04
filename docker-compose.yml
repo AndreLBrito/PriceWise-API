@@ -45,6 +45,8 @@ services:
       EmailNotifications__FromEmail: ${EMAIL_NOTIFICATIONS_FROM_EMAIL:-noreply@pricewise.local}
       EmailNotifications__TimeoutInSeconds: ${EMAIL_NOTIFICATIONS_TIMEOUT_IN_SECONDS:-10}
       EmailNotifications__MaxRetryAttempts: ${EMAIL_NOTIFICATIONS_MAX_RETRY_ATTEMPTS:-3}
+      CsvExport__MaxRows: ${CSV_EXPORT_MAX_ROWS:-10000}
+      CsvExport__DateFormat: "${CSV_EXPORT_DATE_FORMAT:-yyyy-MM-dd HH:mm:ss}"
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:

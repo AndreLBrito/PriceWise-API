@@ -100,6 +100,60 @@ DATA_SEED_ENABLED=false
 
 O seed e idempotente, nao duplica dados em novas execucoes e nao roda em `Production`.
 
+## Seguranca e autorizacao
+
+A API possui roles no JWT para separar usuarios comuns e operacoes administrativas.
+
+Roles disponiveis:
+
+- `User`: role padrao de usuarios criados pelo endpoint publico de register e do usuario demo.
+- `Admin`: role para operacoes administrativas e endpoints sensiveis.
+
+Policies principais:
+
+- `AuthenticatedUser`: endpoints autenticados comuns.
+- `AdminOnly`: endpoints administrativos.
+- `PriceCheckManagement`: gerenciamento manual do PriceCheck.
+- `TelemetryManagement`: informacoes de telemetria.
+- `SeedManagement`: execucao manual do seed de demonstracao.
+- `SystemManagement`: reservada para endpoints administrativos de sistema.
+
+Usuario admin de demonstracao:
+
+- Email: `admin@pricewise.com`
+- Senha: `Admin@123456`
+
+Configuracao:
+
+```json
+"AdminSeed": {
+  "Enabled": true,
+  "Email": "admin@pricewise.com",
+  "Password": "Admin@123456"
+},
+"AuthenticationSecurity": {
+  "MaxFailedLoginAttempts": 5,
+  "LockoutMinutes": 15
+}
+```
+
+Endpoints de seguranca do usuario:
+
+- `GET /api/auth/me`
+- `POST /api/auth/change-password`
+- `POST /api/auth/revoke-refresh-tokens`
+
+Endpoints administrativos:
+
+- `GET /api/admin/users?page=1&pageSize=20`
+- `GET /api/admin/users/{id}`
+- `PUT /api/admin/users/{id}/role`
+- `PUT /api/admin/users/{id}/activate`
+- `PUT /api/admin/users/{id}/deactivate`
+- `POST /api/admin/users/{id}/revoke-refresh-tokens`
+
+Para testar no Scalar, faca login com o usuario admin, copie o `AccessToken` e use o botao de autorizacao com `Bearer {token}`. Usuarios com role `User` recebem `403 Forbidden` nos endpoints administrativos.
+
 ## Webhook Notifications
 
 Quando uma `AlertNotification` e criada, canais ativos do tipo `Webhook` recebem um `POST` com `application/json` para a URL configurada em `Destination`.

@@ -12,6 +12,8 @@ public sealed class TelemetryOptions
 
     public string Exporter { get; set; } = "Console";
 
+    public string? OtlpEndpoint { get; set; }
+
     public bool EnableMetrics { get; set; } = true;
 
     public bool EnableTracing { get; set; } = true;

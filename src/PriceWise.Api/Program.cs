@@ -33,6 +33,8 @@ try
         app.MapScalarDocs();
     }
 
+    await app.UseDatabaseMigrationsAsync();
+
     app.UseSerilogRequestLogging();
     app.UseExceptionHandler();
     app.UseMiddleware<PriceWise.Api.Telemetry.CorrelationIdMiddleware>();

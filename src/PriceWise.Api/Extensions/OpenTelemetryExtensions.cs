@@ -22,6 +22,7 @@ public static class OpenTelemetryExtensions
             telemetryOptions.ServiceName = options.ServiceName;
             telemetryOptions.ServiceVersion = options.ServiceVersion;
             telemetryOptions.Exporter = options.Exporter;
+            telemetryOptions.OtlpEndpoint = options.OtlpEndpoint;
             telemetryOptions.EnableMetrics = options.EnableMetrics;
             telemetryOptions.EnableTracing = options.EnableTracing;
         });
@@ -84,7 +85,7 @@ public static class OpenTelemetryExtensions
     {
         if (IsOtlp(options))
         {
-            builder.AddOtlpExporter();
+            builder.AddOtlpExporter(exporter => ConfigureOtlpExporter(exporter, options));
             return;
         }
 
@@ -95,7 +96,7 @@ public static class OpenTelemetryExtensions
     {
         if (IsOtlp(options))
         {
-            builder.AddOtlpExporter();
+            builder.AddOtlpExporter(exporter => ConfigureOtlpExporter(exporter, options));
             return;
         }
 
@@ -116,9 +117,18 @@ public static class OpenTelemetryExtensions
             ServiceName = configuration[$"{TelemetryOptions.SectionName}:ServiceName"] ?? "PriceWise.Api",
             ServiceVersion = configuration[$"{TelemetryOptions.SectionName}:ServiceVersion"] ?? "1.0.0",
             Exporter = configuration[$"{TelemetryOptions.SectionName}:Exporter"] ?? "Console",
+            OtlpEndpoint = configuration[$"{TelemetryOptions.SectionName}:OtlpEndpoint"],
             EnableMetrics = ReadBool(configuration, $"{TelemetryOptions.SectionName}:EnableMetrics", true),
             EnableTracing = ReadBool(configuration, $"{TelemetryOptions.SectionName}:EnableTracing", true)
         };
+    }
+
+    private static void ConfigureOtlpExporter(OtlpExporterOptions exporter, TelemetryOptions options)
+    {
+        if (!string.IsNullOrWhiteSpace(options.OtlpEndpoint))
+        {
+            exporter.Endpoint = new Uri(options.OtlpEndpoint);
+        }
     }
 
     private static bool ReadBool(IConfiguration configuration, string key, bool defaultValue)

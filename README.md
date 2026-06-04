@@ -70,6 +70,35 @@ As variaveis de ambiente ficam documentadas em `.env.example`. Para customizar c
 
 O container `pricewise-api` executa as migrations automaticamente durante a inicializacao. O `docker-compose.yml` aguarda PostgreSQL e Redis ficarem saudaveis antes de iniciar a API.
 
+## Dados de demonstracao
+
+Em ambiente de desenvolvimento, a API pode criar dados iniciais para demonstrar o Dashboard e os principais fluxos do projeto.
+
+Usuario demo:
+
+- Email: `demo@pricewise.com`
+- Senha: `Demo@123456`
+
+A configuracao fica em `appsettings.json` ou nas variaveis do `.env`:
+
+```json
+"DataSeed": {
+  "Enabled": true,
+  "CreateDemoUser": true,
+  "DemoUserEmail": "demo@pricewise.com",
+  "DemoUserPassword": "Demo@123456",
+  "CreateDemoData": true
+}
+```
+
+Para desabilitar no Docker Compose, ajuste:
+
+```env
+DATA_SEED_ENABLED=false
+```
+
+O seed e idempotente, nao duplica dados em novas execucoes e nao roda em `Production`.
+
 ## Observabilidade
 
 A API possui observabilidade com OpenTelemetry para traces e metricas. A configuracao fica em `appsettings.json`:

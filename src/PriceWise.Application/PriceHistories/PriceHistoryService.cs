@@ -1,4 +1,5 @@
 using PriceWise.Application.Abstractions.Repositories;
+using PriceWise.Application.AlertNotifications;
 using PriceWise.Application.Common;
 using PriceWise.Application.PriceHistories.Dtos;
 using PriceWise.Domain.Entities;
@@ -10,15 +11,18 @@ public sealed class PriceHistoryService : IPriceHistoryService
     private readonly IPriceHistoryRepository priceHistoryRepository;
     private readonly IProductRepository productRepository;
     private readonly IStoreRepository storeRepository;
+    private readonly IAlertNotificationService alertNotificationService;
 
     public PriceHistoryService(
         IPriceHistoryRepository priceHistoryRepository,
         IProductRepository productRepository,
-        IStoreRepository storeRepository)
+        IStoreRepository storeRepository,
+        IAlertNotificationService alertNotificationService)
     {
         this.priceHistoryRepository = priceHistoryRepository;
         this.productRepository = productRepository;
         this.storeRepository = storeRepository;
+        this.alertNotificationService = alertNotificationService;
     }
 
     public async Task<Result<PriceHistoryResponse>> CreateAsync(
@@ -50,6 +54,7 @@ public sealed class PriceHistoryService : IPriceHistoryService
             request.SourceUrl);
 
         await priceHistoryRepository.AddAsync(priceHistory, cancellationToken);
+        await alertNotificationService.CheckPriceAlertsAsync(priceHistory, cancellationToken);
 
         return Result<PriceHistoryResponse>.Success(MapToResponse(priceHistory));
     }

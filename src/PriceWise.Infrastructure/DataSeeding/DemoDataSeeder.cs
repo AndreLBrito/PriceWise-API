@@ -13,10 +13,12 @@ public sealed class DemoDataSeeder : IDataSeeder
 {
     private const string CreatedBy = "demo-seed";
     private static readonly Guid DefaultDemoUserId = Guid.Parse("10000000-0000-0000-0000-000000000001");
+    private static readonly Guid DefaultAdminUserId = Guid.Parse("10000000-0000-0000-0000-000000000099");
 
     private readonly IDbConnectionFactory connectionFactory;
     private readonly IPasswordHasher passwordHasher;
     private readonly IOptions<DataSeedOptions> options;
+    private readonly IOptions<AdminSeedOptions> adminOptions;
     private readonly IHostEnvironment environment;
     private readonly ILogger<DemoDataSeeder> logger;
 
@@ -24,12 +26,14 @@ public sealed class DemoDataSeeder : IDataSeeder
         IDbConnectionFactory connectionFactory,
         IPasswordHasher passwordHasher,
         IOptions<DataSeedOptions> options,
+        IOptions<AdminSeedOptions> adminOptions,
         IHostEnvironment environment,
         ILogger<DemoDataSeeder> logger)
     {
         this.connectionFactory = connectionFactory;
         this.passwordHasher = passwordHasher;
         this.options = options;
+        this.adminOptions = adminOptions;
         this.environment = environment;
         this.logger = logger;
     }
@@ -37,28 +41,31 @@ public sealed class DemoDataSeeder : IDataSeeder
     public async Task<Result> SeedAsync(CancellationToken cancellationToken = default)
     {
         var seedOptions = options.Value;
-
-        if (!seedOptions.Enabled)
-        {
-            logger.LogInformation("Seed de demonstração está desabilitado.");
-            return Result.Success();
-        }
+        var adminSeedOptions = adminOptions.Value;
 
         if (environment.IsProduction())
         {
-            logger.LogWarning("Seed de demonstração não será executado em Production.");
-            return Result.Failure(new Error("DataSeed.Production", "Seed de demonstração não pode ser executado em Production."));
+            logger.LogWarning("Seed não será executado em Production.");
+            return Result.Failure(new Error("DataSeed.Production", "Seed não pode ser executado em Production."));
         }
 
-        logger.LogInformation("Iniciando seed de dados de demonstração.");
+        logger.LogInformation("Iniciando seed de segurança e dados de demonstração.");
 
         using var connection = await connectionFactory.CreateConnectionAsync(cancellationToken);
         using var transaction = connection.BeginTransaction();
 
         try
         {
-            var userId = await SeedUserAsync(connection, transaction, seedOptions);
+            await SeedAdminAsync(connection, transaction, adminSeedOptions);
 
+            if (!seedOptions.Enabled)
+            {
+                logger.LogInformation("Seed de demonstração está desabilitado.");
+                transaction.Commit();
+                return Result.Success();
+            }
+
+            var userId = await SeedUserAsync(connection, transaction, seedOptions);
             if (userId is not null && seedOptions.CreateDemoData)
             {
                 await SeedProductsAsync(connection, transaction, userId.Value);
@@ -70,17 +77,52 @@ public sealed class DemoDataSeeder : IDataSeeder
             }
 
             transaction.Commit();
-            logger.LogInformation("Seed de dados de demonstração concluído com sucesso.");
+            logger.LogInformation("Seed concluído com sucesso.");
 
             return Result.Success();
         }
         catch (Exception exception)
         {
             transaction.Rollback();
-            logger.LogError(exception, "Falha ao executar seed de dados de demonstração.");
+            logger.LogError(exception, "Falha ao executar seed.");
 
-            return Result.Failure(new Error("DataSeed.Failed", "Não foi possível executar o seed de dados de demonstração."));
+            return Result.Failure(new Error("DataSeed.Failed", "Não foi possível executar o seed."));
         }
+    }
+
+    private async Task SeedAdminAsync(
+        System.Data.IDbConnection connection,
+        System.Data.IDbTransaction transaction,
+        AdminSeedOptions seedOptions)
+    {
+        if (!seedOptions.Enabled)
+        {
+            logger.LogInformation("Seed de usuário administrador está desabilitado.");
+            return;
+        }
+
+        const string insertSql = """
+            insert into users (
+                id, name, email, password_hash, role, is_active,
+                failed_login_attempts, locked_until_utc, created_at_utc, created_by)
+            select
+                @Id, @Name, @Email, @PasswordHash, 'Admin', true,
+                0, null, @CreatedAtUtc, @CreatedBy
+            where not exists (select 1 from users where email = @Email);
+            """;
+
+        await connection.ExecuteAsync(
+            insertSql,
+            new
+            {
+                Id = DefaultAdminUserId,
+                Name = "Administrador PriceWise",
+                Email = seedOptions.Email.ToLowerInvariant(),
+                PasswordHash = passwordHasher.Hash(seedOptions.Password),
+                CreatedAtUtc = DateTime.UtcNow,
+                CreatedBy
+            },
+            transaction);
     }
 
     private async Task<Guid?> SeedUserAsync(
@@ -97,10 +139,14 @@ public sealed class DemoDataSeeder : IDataSeeder
         }
 
         const string insertSql = """
-            insert into users (id, name, email, password_hash, is_active, created_at_utc, created_by)
-            select @Id, @Name, @Email, @PasswordHash, true, @CreatedAtUtc, @CreatedBy
-            where not exists (select 1 from users where email = @Email);
-            """;
+                insert into users (
+                    id, name, email, password_hash, role, is_active,
+                    failed_login_attempts, locked_until_utc, created_at_utc, created_by)
+                select
+                    @Id, @Name, @Email, @PasswordHash, 'User', true,
+                    0, null, @CreatedAtUtc, @CreatedBy
+                where not exists (select 1 from users where email = @Email);
+                """;
 
         await connection.ExecuteAsync(
             insertSql,

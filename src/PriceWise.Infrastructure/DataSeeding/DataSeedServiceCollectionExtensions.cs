@@ -19,6 +19,12 @@ public static class DataSeedServiceCollectionExtensions
             options.DemoUserPassword = configuration[$"{DataSeedOptions.SectionName}:DemoUserPassword"] ?? "Demo@123456";
             options.CreateDemoData = ReadBool(configuration, $"{DataSeedOptions.SectionName}:CreateDemoData", true);
         });
+        services.Configure<AdminSeedOptions>(options =>
+        {
+            options.Enabled = ReadBool(configuration, $"{AdminSeedOptions.SectionName}:Enabled", true);
+            options.Email = configuration[$"{AdminSeedOptions.SectionName}:Email"] ?? "admin@pricewise.com";
+            options.Password = configuration[$"{AdminSeedOptions.SectionName}:Password"] ?? "Admin@123456";
+        });
         services.AddScoped<IDataSeeder, DemoDataSeeder>();
 
         return services;

@@ -50,7 +50,13 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAlertNotificationRepository, AlertNotificationRepository>();
         services.AddScoped<IDashboardRepository, DashboardRepository>();
         services.AddScoped<INotificationChannelRepository, NotificationChannelRepository>();
-        services.AddScoped<IWebhookNotificationSender, WebhookNotificationSender>();
+        services.Configure<WebhookNotificationOptions>(options =>
+        {
+            options.Enabled = ReadBool(configuration, $"{WebhookNotificationOptions.SectionName}:Enabled", true);
+            options.TimeoutInSeconds = ReadInt(configuration, $"{WebhookNotificationOptions.SectionName}:TimeoutInSeconds", 10);
+            options.MaxRetryAttempts = ReadInt(configuration, $"{WebhookNotificationOptions.SectionName}:MaxRetryAttempts", 3);
+        });
+        services.AddHttpClient<IWebhookNotificationSender, WebhookNotificationSender>();
         services.AddScoped<IEmailNotificationSender, EmailNotificationSender>();
         services.AddPriceCheckBackgroundJobs(configuration);
         services.AddDataSeed(configuration);
@@ -69,5 +75,10 @@ public static class InfrastructureServiceCollectionExtensions
     private static int ReadInt(IConfiguration configuration, string key, int defaultValue)
     {
         return int.TryParse(configuration[key], out var value) ? value : defaultValue;
+    }
+
+    private static bool ReadBool(IConfiguration configuration, string key, bool defaultValue)
+    {
+        return bool.TryParse(configuration[key], out var value) ? value : defaultValue;
     }
 }

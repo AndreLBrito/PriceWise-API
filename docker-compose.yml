@@ -32,6 +32,9 @@ services:
       DataSeed__DemoUserEmail: ${DATA_SEED_DEMO_USER_EMAIL:-demo@pricewise.com}
       DataSeed__DemoUserPassword: ${DATA_SEED_DEMO_USER_PASSWORD:-Demo@123456}
       DataSeed__CreateDemoData: ${DATA_SEED_CREATE_DEMO_DATA:-true}
+      WebhookNotifications__Enabled: ${WEBHOOK_NOTIFICATIONS_ENABLED:-true}
+      WebhookNotifications__TimeoutInSeconds: ${WEBHOOK_NOTIFICATIONS_TIMEOUT_IN_SECONDS:-10}
+      WebhookNotifications__MaxRetryAttempts: ${WEBHOOK_NOTIFICATIONS_MAX_RETRY_ATTEMPTS:-3}
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:

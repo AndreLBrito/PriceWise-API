@@ -1,4 +1,5 @@
 using System.Text;
+using PriceWise.Api.Authorization;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
 using PriceWise.Api.RateLimiting;
@@ -14,7 +15,7 @@ public static class ExportEndpoints
     {
         var group = app.MapGroup("/api/exports")
             .WithTags("Exportações")
-            .RequireAuthorization()
+            .RequireAuthorization(AuthorizationPolicyNames.AuthenticatedUser)
             .RequireRateLimiting(RateLimitPolicyNames.General);
 
         group.MapGet("/products.csv", ExportProductsAsync)

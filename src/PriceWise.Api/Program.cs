@@ -21,7 +21,7 @@ try
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddApiAuthentication(builder.Configuration);
-    builder.Services.AddAuthorization();
+    builder.Services.AddApiAuthorization();
     builder.Services.AddPriceWiseRateLimiting(builder.Configuration);
     builder.Services.AddPriceWiseOpenTelemetry(builder.Configuration, builder.Environment);
 

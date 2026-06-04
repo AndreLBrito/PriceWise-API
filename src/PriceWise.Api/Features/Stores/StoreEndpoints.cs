@@ -1,4 +1,5 @@
 using FluentValidation;
+using PriceWise.Api.Authorization;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
 using PriceWise.Api.RateLimiting;
@@ -14,7 +15,7 @@ public static class StoreEndpoints
     {
         var group = app.MapGroup("/api/stores")
             .WithTags("Lojas")
-            .RequireAuthorization()
+            .RequireAuthorization(AuthorizationPolicyNames.AuthenticatedUser)
             .RequireRateLimiting(RateLimitPolicyNames.General);
 
         group.MapPost("/", CreateAsync)

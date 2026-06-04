@@ -1,4 +1,5 @@
 using FluentValidation;
+using PriceWise.Api.Authorization;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
 using PriceWise.Api.RateLimiting;
@@ -14,7 +15,7 @@ public static class PriceAlertEndpoints
     {
         var group = app.MapGroup("/api/price-alerts")
             .WithTags("Alertas de preço")
-            .RequireAuthorization()
+            .RequireAuthorization(AuthorizationPolicyNames.AuthenticatedUser)
             .RequireRateLimiting(RateLimitPolicyNames.General);
 
         group.MapPost("/", CreateAsync)

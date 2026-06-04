@@ -1,6 +1,8 @@
 using FluentValidation;
 using Microsoft.AspNetCore.RateLimiting;
+using PriceWise.Api.Authorization;
 using PriceWise.Api.Common;
+using PriceWise.Api.Extensions;
 using PriceWise.Api.RateLimiting;
 using PriceWise.Application.Authentication;
 using PriceWise.Application.Authentication.Dtos;
@@ -33,6 +35,24 @@ public static class AuthenticationEndpoints
         group.MapPost("/logout", LogoutAsync)
             .WithName("Logout")
             .WithSummary("Revoga um refresh token");
+
+        group.MapGet("/me", GetMeAsync)
+            .WithName("GetCurrentUser")
+            .WithSummary("Retorna os dados seguros do usuário autenticado")
+            .RequireAuthorization(AuthorizationPolicyNames.AuthenticatedUser)
+            .RequireRateLimiting(RateLimitPolicyNames.General);
+
+        group.MapPost("/change-password", ChangePasswordAsync)
+            .WithName("ChangePassword")
+            .WithSummary("Altera a senha do usuário autenticado")
+            .RequireAuthorization(AuthorizationPolicyNames.AuthenticatedUser)
+            .RequireRateLimiting(RateLimitPolicyNames.General);
+
+        group.MapPost("/revoke-refresh-tokens", RevokeRefreshTokensAsync)
+            .WithName("RevokeOwnRefreshTokens")
+            .WithSummary("Revoga todos os refresh tokens ativos do usuário autenticado")
+            .RequireAuthorization(AuthorizationPolicyNames.AuthenticatedUser)
+            .RequireRateLimiting(RateLimitPolicyNames.General);
 
         return app;
     }
@@ -117,9 +137,78 @@ public static class AuthenticationEndpoints
             : Failure(result.Error);
     }
 
+    private static async Task<IResult> GetMeAsync(
+        HttpContext httpContext,
+        IAuthService authService,
+        CancellationToken cancellationToken)
+    {
+        if (!httpContext.User.TryGetUserId(out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await authService.GetMeAsync(userId, cancellationToken);
+
+        return result.IsSuccess
+            ? Results.Ok(ApiResponse<CurrentUserResponse>.Ok(result.Value))
+            : Failure(result.Error);
+    }
+
+    private static async Task<IResult> ChangePasswordAsync(
+        HttpContext httpContext,
+        ChangePasswordRequest request,
+        IValidator<ChangePasswordRequest> validator,
+        IAuthService authService,
+        CancellationToken cancellationToken)
+    {
+        if (!httpContext.User.TryGetUserId(out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var validationResult = await validator.ValidateAsync(request, cancellationToken);
+
+        if (!validationResult.IsValid)
+        {
+            return ValidationFailure(validationResult.Errors[0].ErrorMessage);
+        }
+
+        var result = await authService.ChangePasswordAsync(userId, request, cancellationToken);
+
+        return result.IsSuccess
+            ? Results.Ok(ApiResponse<object>.Ok(new { Message = "Senha alterada com sucesso." }))
+            : Failure(result.Error);
+    }
+
+    private static async Task<IResult> RevokeRefreshTokensAsync(
+        HttpContext httpContext,
+        IAuthService authService,
+        CancellationToken cancellationToken)
+    {
+        if (!httpContext.User.TryGetUserId(out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await authService.RevokeRefreshTokensAsync(userId, cancellationToken);
+
+        return result.IsSuccess
+            ? Results.Ok(ApiResponse<object>.Ok(new { Message = "Refresh tokens revogados com sucesso." }))
+            : Failure(result.Error);
+    }
+
     private static IResult ValidationFailure(string message)
     {
         return Results.BadRequest(ApiResponse<object>.Fail("Validation.InvalidRequest", message));
+    }
+
+    private static IResult Unauthorized()
+    {
+        var response = ApiResponse<object>.Fail(
+            "Auth.Unauthorized",
+            "Usuário não autenticado.");
+
+        return Results.Json(response, statusCode: StatusCodes.Status401Unauthorized);
     }
 
     private static IResult Failure(Error error)
@@ -131,6 +220,10 @@ public static class AuthenticationEndpoints
             "Auth.EmailAlreadyRegistered" => Results.Conflict(response),
             "Auth.InvalidCredentials" => Results.Json(response, statusCode: StatusCodes.Status401Unauthorized),
             "Auth.InvalidRefreshToken" => Results.Json(response, statusCode: StatusCodes.Status401Unauthorized),
+            "Auth.UserInactive" => Results.Json(response, statusCode: StatusCodes.Status403Forbidden),
+            "Auth.UserLocked" => Results.Json(response, statusCode: StatusCodes.Status423Locked),
+            "Auth.UserNotFound" => Results.NotFound(response),
+            "Auth.InvalidCurrentPassword" => Results.Json(response, statusCode: StatusCodes.Status401Unauthorized),
             _ => Results.BadRequest(response)
         };
     }

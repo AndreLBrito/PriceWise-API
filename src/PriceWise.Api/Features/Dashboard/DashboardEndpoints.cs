@@ -1,3 +1,4 @@
+using PriceWise.Api.Authorization;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
 using PriceWise.Api.RateLimiting;
@@ -13,7 +14,7 @@ public static class DashboardEndpoints
     {
         var group = app.MapGroup("/api/dashboard")
             .WithTags("Dashboard")
-            .RequireAuthorization()
+            .RequireAuthorization(AuthorizationPolicyNames.AuthenticatedUser)
             .RequireRateLimiting(RateLimitPolicyNames.General);
 
         group.MapGet("/summary", GetSummaryAsync)

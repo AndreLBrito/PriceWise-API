@@ -1,4 +1,5 @@
 using System.Reflection;
+using PriceWise.Api.Authorization;
 using PriceWise.Api.Common;
 using PriceWise.Application.Abstractions.DataSeeding;
 
@@ -26,7 +27,7 @@ public static class SystemEndpoints
             .WithSummary("Retorna informações do sistema");
 
         group.MapPost("/seed-demo-data", SeedDemoDataAsync)
-            .RequireAuthorization()
+            .RequireAuthorization(AuthorizationPolicyNames.SeedManagement)
             .WithName("SeedDemoData")
             .WithSummary("Executa o seed de dados de demonstração");
 
@@ -38,7 +39,6 @@ public static class SystemEndpoints
         IHostEnvironment environment,
         CancellationToken cancellationToken)
     {
-        // TODO: restringir para usuário administrador quando o conceito de roles existir.
         if (environment.IsProduction())
         {
             return Results.BadRequest(ApiResponse<object>.Fail(

@@ -1,3 +1,4 @@
+using PriceWise.Api.Authorization;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
 using PriceWise.Api.RateLimiting;
@@ -13,9 +14,8 @@ public static class PriceCheckEndpoints
     {
         var group = app.MapGroup("/api/price-check")
             .WithTags("Verificação de preços")
-            .RequireAuthorization();
+            .RequireAuthorization(AuthorizationPolicyNames.PriceCheckManagement);
 
-        // TODO: Restringir estes endpoints a usuários administradores quando o modelo de autorização existir.
         group.MapPost("/run", RunAsync)
             .WithName("RunPriceCheck")
             .WithSummary("Executa manualmente a verificação simulada de preços")

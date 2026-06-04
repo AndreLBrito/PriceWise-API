@@ -1,3 +1,4 @@
+using PriceWise.Api.Authorization;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
 using PriceWise.Api.RateLimiting;
@@ -13,7 +14,7 @@ public static class AlertNotificationEndpoints
     {
         var group = app.MapGroup("/api/alert-notifications")
             .WithTags("Notificações de alerta")
-            .RequireAuthorization()
+            .RequireAuthorization(AuthorizationPolicyNames.AuthenticatedUser)
             .RequireRateLimiting(RateLimitPolicyNames.General);
 
         group.MapGet("/", ListAsync)

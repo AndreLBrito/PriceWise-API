@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+.git/
+.github/
+.vs/
+.idea/
+TestResults/
+README.md
+LICENSE
+docker-compose*.yml
+start.sh
+start.ps1

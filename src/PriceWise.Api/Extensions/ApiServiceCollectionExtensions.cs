@@ -8,6 +8,7 @@ public static class ApiServiceCollectionExtensions
     {
         services.AddExceptionHandler<GlobalExceptionHandler>();
         services.AddProblemDetails();
+        services.AddHttpClient();
 
         return services;
     }

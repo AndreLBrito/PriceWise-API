@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using PriceWise.Application.Abstractions.Repositories;
+using PriceWise.Application.Abstractions.Telemetry;
 using PriceWise.Application.Common;
 using PriceWise.Application.PriceChecks;
 using PriceWise.Application.PriceHistories;
@@ -122,7 +123,8 @@ public sealed class PriceCheckServiceTests
             repository,
             priceHistoryService,
             options,
-            NullLogger<PriceCheckService>.Instance);
+            NullLogger<PriceCheckService>.Instance,
+            new NoOpApplicationTelemetry());
     }
 
     private sealed class InMemoryPriceCheckRepository : IPriceCheckRepository

@@ -14,7 +14,8 @@ public sealed class PriceWiseWebApplicationFactory : WebApplicationFactory<Progr
         {
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["PriceCheck:Enabled"] = "false"
+                ["PriceCheck:Enabled"] = "false",
+                ["Telemetry:Enabled"] = "false"
             });
         });
 

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Repositories;
+using PriceWise.Application.Abstractions.Telemetry;
 using PriceWise.Application.Products;
 using PriceWise.Application.Products.Dtos;
 using PriceWise.Domain.Entities;
@@ -13,7 +14,7 @@ public sealed class ProductServiceTests
     public async Task CreateAsyncCreatesActiveProduct()
     {
         var repository = new InMemoryProductRepository();
-        var service = new ProductService(repository, new NoOpDashboardCacheInvalidator());
+        var service = new ProductService(repository, new NoOpDashboardCacheInvalidator(), new NoOpApplicationTelemetry());
         var userId = Guid.NewGuid();
 
         var result = await service.CreateAsync(userId, CreateRequest("https://example.com/product/1"));
@@ -28,7 +29,7 @@ public sealed class ProductServiceTests
     public async Task CreateAsyncFailsWhenProductUrlAlreadyExistsForSameUser()
     {
         var repository = new InMemoryProductRepository();
-        var service = new ProductService(repository, new NoOpDashboardCacheInvalidator());
+        var service = new ProductService(repository, new NoOpDashboardCacheInvalidator(), new NoOpApplicationTelemetry());
         var userId = Guid.NewGuid();
         await repository.AddAsync(Product.Create(
             userId,
@@ -49,7 +50,7 @@ public sealed class ProductServiceTests
     public async Task GetByIdAsyncDoesNotReturnProductFromAnotherUser()
     {
         var repository = new InMemoryProductRepository();
-        var service = new ProductService(repository, new NoOpDashboardCacheInvalidator());
+        var service = new ProductService(repository, new NoOpDashboardCacheInvalidator(), new NoOpApplicationTelemetry());
         var ownerId = Guid.NewGuid();
         var anotherUserId = Guid.NewGuid();
         var product = Product.Create(
@@ -72,7 +73,7 @@ public sealed class ProductServiceTests
     public async Task DeleteAsyncDeactivatesProduct()
     {
         var repository = new InMemoryProductRepository();
-        var service = new ProductService(repository, new NoOpDashboardCacheInvalidator());
+        var service = new ProductService(repository, new NoOpDashboardCacheInvalidator(), new NoOpApplicationTelemetry());
         var userId = Guid.NewGuid();
         var product = Product.Create(
             userId,

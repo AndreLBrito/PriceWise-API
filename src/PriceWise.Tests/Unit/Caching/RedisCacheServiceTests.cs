@@ -3,6 +3,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using PriceWise.Application.Abstractions.Caching;
+using PriceWise.Application.Abstractions.Telemetry;
 using PriceWise.Infrastructure.Caching;
 
 namespace PriceWise.Tests.Unit.Caching;
@@ -90,7 +91,8 @@ public sealed class RedisCacheServiceTests
                 ConnectionString = "localhost:6379",
                 DefaultExpirationInMinutes = 10
             }),
-            NullLogger<RedisCacheService>.Instance);
+            NullLogger<RedisCacheService>.Instance,
+            new NoOpApplicationTelemetry());
     }
 
     private sealed record CachedValue(string Name);

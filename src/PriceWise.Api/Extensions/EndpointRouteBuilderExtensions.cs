@@ -9,6 +9,7 @@ using PriceWise.Api.Features.PriceHistories;
 using PriceWise.Api.Features.Products;
 using PriceWise.Api.Features.Stores;
 using PriceWise.Api.Features.System;
+using PriceWise.Api.Features.Telemetry;
 
 namespace PriceWise.Api.Extensions;
 
@@ -27,6 +28,7 @@ public static class EndpointRouteBuilderExtensions
         app.MapAlertNotificationEndpoints();
         app.MapDashboardEndpoints();
         app.MapSystemEndpoints();
+        app.MapTelemetryEndpoints();
 
         return app;
     }

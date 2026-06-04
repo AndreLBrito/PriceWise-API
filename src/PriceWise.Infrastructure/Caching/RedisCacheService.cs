@@ -3,6 +3,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using PriceWise.Application.Abstractions.Caching;
+using PriceWise.Application.Abstractions.Telemetry;
 
 namespace PriceWise.Infrastructure.Caching;
 
@@ -13,15 +14,18 @@ public sealed class RedisCacheService : ICacheService
     private readonly IDistributedCache distributedCache;
     private readonly CacheOptions options;
     private readonly ILogger<RedisCacheService> logger;
+    private readonly IApplicationTelemetry telemetry;
 
     public RedisCacheService(
         IDistributedCache distributedCache,
         IOptions<CacheOptions> options,
-        ILogger<RedisCacheService> logger)
+        ILogger<RedisCacheService> logger,
+        IApplicationTelemetry telemetry)
     {
         this.distributedCache = distributedCache;
         this.options = options.Value;
         this.logger = logger;
+        this.telemetry = telemetry;
     }
 
     public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
@@ -33,6 +37,7 @@ public sealed class RedisCacheService : ICacheService
 
         try
         {
+            using var activity = telemetry.StartActivity("Redis.Get");
             var value = await distributedCache.GetStringAsync(key, cancellationToken);
 
             return string.IsNullOrWhiteSpace(value)
@@ -41,6 +46,7 @@ public sealed class RedisCacheService : ICacheService
         }
         catch (Exception exception)
         {
+            telemetry.RecordError(exception);
             logger.LogWarning(exception, "Falha ao ler cache Redis para a chave {CacheKey}. A API seguirá sem cache.", key);
 
             return default;
@@ -60,6 +66,7 @@ public sealed class RedisCacheService : ICacheService
 
         try
         {
+            using var activity = telemetry.StartActivity("Redis.Set");
             var cacheOptions = new DistributedCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = expiration ?? GetDefaultExpiration()
@@ -70,6 +77,7 @@ public sealed class RedisCacheService : ICacheService
         }
         catch (Exception exception)
         {
+            telemetry.RecordError(exception);
             logger.LogWarning(exception, "Falha ao gravar cache Redis para a chave {CacheKey}. A API seguirá sem cache.", key);
         }
     }
@@ -83,10 +91,12 @@ public sealed class RedisCacheService : ICacheService
 
         try
         {
+            using var activity = telemetry.StartActivity("Redis.Remove");
             await distributedCache.RemoveAsync(key, cancellationToken);
         }
         catch (Exception exception)
         {
+            telemetry.RecordError(exception);
             logger.LogWarning(exception, "Falha ao remover cache Redis para a chave {CacheKey}.", key);
         }
     }

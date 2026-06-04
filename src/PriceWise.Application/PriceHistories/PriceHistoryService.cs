@@ -1,5 +1,6 @@
 using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Repositories;
+using PriceWise.Application.Abstractions.Telemetry;
 using PriceWise.Application.AlertNotifications;
 using PriceWise.Application.Common;
 using PriceWise.Application.PriceHistories.Dtos;
@@ -14,19 +15,22 @@ public sealed class PriceHistoryService : IPriceHistoryService
     private readonly IStoreRepository storeRepository;
     private readonly IAlertNotificationService alertNotificationService;
     private readonly IDashboardCacheInvalidator dashboardCacheInvalidator;
+    private readonly IApplicationTelemetry telemetry;
 
     public PriceHistoryService(
         IPriceHistoryRepository priceHistoryRepository,
         IProductRepository productRepository,
         IStoreRepository storeRepository,
         IAlertNotificationService alertNotificationService,
-        IDashboardCacheInvalidator dashboardCacheInvalidator)
+        IDashboardCacheInvalidator dashboardCacheInvalidator,
+        IApplicationTelemetry telemetry)
     {
         this.priceHistoryRepository = priceHistoryRepository;
         this.productRepository = productRepository;
         this.storeRepository = storeRepository;
         this.alertNotificationService = alertNotificationService;
         this.dashboardCacheInvalidator = dashboardCacheInvalidator;
+        this.telemetry = telemetry;
     }
 
     public async Task<Result<PriceHistoryResponse>> CreateAsync(
@@ -34,10 +38,12 @@ public sealed class PriceHistoryService : IPriceHistoryService
         CreatePriceHistoryRequest request,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("PriceHistoryService.Create");
         var product = await productRepository.GetByIdAsync(request.ProductId, userId, cancellationToken);
 
         if (product is null)
         {
+            telemetry.RecordError(PriceHistoryErrors.ProductNotFound.Code);
             return Result<PriceHistoryResponse>.Failure(PriceHistoryErrors.ProductNotFound);
         }
 
@@ -45,6 +51,7 @@ public sealed class PriceHistoryService : IPriceHistoryService
 
         if (store is null)
         {
+            telemetry.RecordError(PriceHistoryErrors.StoreNotFound.Code);
             return Result<PriceHistoryResponse>.Failure(PriceHistoryErrors.StoreNotFound);
         }
 
@@ -61,6 +68,7 @@ public sealed class PriceHistoryService : IPriceHistoryService
         await dashboardCacheInvalidator.InvalidateProductSummaryAsync(userId, priceHistory.ProductId, cancellationToken);
         await dashboardCacheInvalidator.InvalidateStoreSummaryAsync(userId, priceHistory.StoreId, cancellationToken);
         await alertNotificationService.CheckPriceAlertsAsync(priceHistory, cancellationToken);
+        telemetry.RecordPriceHistoryCreated();
 
         return Result<PriceHistoryResponse>.Success(MapToResponse(priceHistory));
     }
@@ -70,10 +78,12 @@ public sealed class PriceHistoryService : IPriceHistoryService
         Guid productId,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("PriceHistoryService.ListByProduct");
         var product = await productRepository.GetByIdAsync(productId, userId, cancellationToken);
 
         if (product is null)
         {
+            telemetry.RecordError(PriceHistoryErrors.ProductNotFound.Code);
             return Result<IReadOnlyCollection<PriceHistoryResponse>>.Failure(PriceHistoryErrors.ProductNotFound);
         }
 
@@ -88,18 +98,24 @@ public sealed class PriceHistoryService : IPriceHistoryService
         Guid productId,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("PriceHistoryService.GetLatest");
         var product = await productRepository.GetByIdAsync(productId, userId, cancellationToken);
 
         if (product is null)
         {
+            telemetry.RecordError(PriceHistoryErrors.ProductNotFound.Code);
             return Result<PriceHistoryResponse>.Failure(PriceHistoryErrors.ProductNotFound);
         }
 
         var priceHistory = await priceHistoryRepository.GetLatestAsync(userId, productId, cancellationToken);
 
-        return priceHistory is null
-            ? Result<PriceHistoryResponse>.Failure(PriceHistoryErrors.PriceHistoryNotFound)
-            : Result<PriceHistoryResponse>.Success(MapToResponse(priceHistory));
+        if (priceHistory is null)
+        {
+            telemetry.RecordError(PriceHistoryErrors.PriceHistoryNotFound.Code);
+            return Result<PriceHistoryResponse>.Failure(PriceHistoryErrors.PriceHistoryNotFound);
+        }
+
+        return Result<PriceHistoryResponse>.Success(MapToResponse(priceHistory));
     }
 
     public async Task<Result<PriceHistoryResponse>> GetLowestAsync(
@@ -107,18 +123,24 @@ public sealed class PriceHistoryService : IPriceHistoryService
         Guid productId,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("PriceHistoryService.GetLowest");
         var product = await productRepository.GetByIdAsync(productId, userId, cancellationToken);
 
         if (product is null)
         {
+            telemetry.RecordError(PriceHistoryErrors.ProductNotFound.Code);
             return Result<PriceHistoryResponse>.Failure(PriceHistoryErrors.ProductNotFound);
         }
 
         var priceHistory = await priceHistoryRepository.GetLowestAsync(userId, productId, cancellationToken);
 
-        return priceHistory is null
-            ? Result<PriceHistoryResponse>.Failure(PriceHistoryErrors.PriceHistoryNotFound)
-            : Result<PriceHistoryResponse>.Success(MapToResponse(priceHistory));
+        if (priceHistory is null)
+        {
+            telemetry.RecordError(PriceHistoryErrors.PriceHistoryNotFound.Code);
+            return Result<PriceHistoryResponse>.Failure(PriceHistoryErrors.PriceHistoryNotFound);
+        }
+
+        return Result<PriceHistoryResponse>.Success(MapToResponse(priceHistory));
     }
 
     public async Task<Result<AveragePriceHistoryResponse>> GetAverageAsync(
@@ -126,10 +148,12 @@ public sealed class PriceHistoryService : IPriceHistoryService
         Guid productId,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("PriceHistoryService.GetAverage");
         var product = await productRepository.GetByIdAsync(productId, userId, cancellationToken);
 
         if (product is null)
         {
+            telemetry.RecordError(PriceHistoryErrors.ProductNotFound.Code);
             return Result<AveragePriceHistoryResponse>.Failure(PriceHistoryErrors.ProductNotFound);
         }
 
@@ -137,6 +161,7 @@ public sealed class PriceHistoryService : IPriceHistoryService
 
         if (average is null)
         {
+            telemetry.RecordError(PriceHistoryErrors.PriceHistoryNotFound.Code);
             return Result<AveragePriceHistoryResponse>.Failure(PriceHistoryErrors.PriceHistoryNotFound);
         }
 

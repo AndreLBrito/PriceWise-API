@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Repositories;
+using PriceWise.Application.Abstractions.Telemetry;
 using PriceWise.Application.AlertNotifications.Dtos;
 using PriceWise.Application.Common;
 using PriceWise.Domain.Entities;
@@ -18,6 +19,7 @@ public sealed class AlertNotificationService : IAlertNotificationService
     private readonly IEmailNotificationSender emailNotificationSender;
     private readonly ILogger<AlertNotificationService> logger;
     private readonly IDashboardCacheInvalidator dashboardCacheInvalidator;
+    private readonly IApplicationTelemetry telemetry;
 
     public AlertNotificationService(
         IAlertNotificationRepository alertNotificationRepository,
@@ -26,7 +28,8 @@ public sealed class AlertNotificationService : IAlertNotificationService
         IWebhookNotificationSender webhookNotificationSender,
         IEmailNotificationSender emailNotificationSender,
         ILogger<AlertNotificationService> logger,
-        IDashboardCacheInvalidator dashboardCacheInvalidator)
+        IDashboardCacheInvalidator dashboardCacheInvalidator,
+        IApplicationTelemetry telemetry)
     {
         this.alertNotificationRepository = alertNotificationRepository;
         this.priceAlertRepository = priceAlertRepository;
@@ -35,12 +38,14 @@ public sealed class AlertNotificationService : IAlertNotificationService
         this.emailNotificationSender = emailNotificationSender;
         this.logger = logger;
         this.dashboardCacheInvalidator = dashboardCacheInvalidator;
+        this.telemetry = telemetry;
     }
 
     public async Task CheckPriceAlertsAsync(
         PriceHistory priceHistory,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("AlertNotificationService.CheckPriceAlerts");
         var priceAlerts = await priceAlertRepository.ListActiveByProductIdAsync(
             priceHistory.UserId,
             priceHistory.ProductId,
@@ -68,6 +73,7 @@ public sealed class AlertNotificationService : IAlertNotificationService
 
             await alertNotificationRepository.AddAsync(notification, cancellationToken);
             await dashboardCacheInvalidator.InvalidateAlertSummaryAsync(notification.UserId, cancellationToken);
+            telemetry.RecordAlertNotificationCreated();
             await SendNotificationAsync(notification, cancellationToken);
         }
     }
@@ -76,6 +82,7 @@ public sealed class AlertNotificationService : IAlertNotificationService
         Guid userId,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("AlertNotificationService.List");
         var notifications = await alertNotificationRepository.ListByUserIdAsync(userId, cancellationToken);
         var response = notifications.Select(MapToResponse).ToArray();
 
@@ -87,14 +94,19 @@ public sealed class AlertNotificationService : IAlertNotificationService
         Guid notificationId,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("AlertNotificationService.GetById");
         var notification = await alertNotificationRepository.GetByIdAsync(
             notificationId,
             userId,
             cancellationToken);
 
-        return notification is null
-            ? Result<AlertNotificationResponse>.Failure(AlertNotificationErrors.AlertNotificationNotFound)
-            : Result<AlertNotificationResponse>.Success(MapToResponse(notification));
+        if (notification is null)
+        {
+            telemetry.RecordError(AlertNotificationErrors.AlertNotificationNotFound.Code);
+            return Result<AlertNotificationResponse>.Failure(AlertNotificationErrors.AlertNotificationNotFound);
+        }
+
+        return Result<AlertNotificationResponse>.Success(MapToResponse(notification));
     }
 
     private static AlertNotificationResponse MapToResponse(AlertNotification notification)
@@ -138,6 +150,7 @@ public sealed class AlertNotificationService : IAlertNotificationService
             }
             catch (Exception exception)
             {
+                telemetry.RecordError(exception);
                 logger.LogWarning(
                     exception,
                     "Falha ao notificar o canal {ChannelId} para a notificação de alerta {AlertNotificationId}.",

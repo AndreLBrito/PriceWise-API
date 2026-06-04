@@ -22,6 +22,7 @@ try
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddApiAuthentication(builder.Configuration);
     builder.Services.AddAuthorization();
+    builder.Services.AddPriceWiseOpenTelemetry(builder.Configuration, builder.Environment);
 
     var app = builder.Build();
 
@@ -33,6 +34,7 @@ try
 
     app.UseSerilogRequestLogging();
     app.UseExceptionHandler();
+    app.UseMiddleware<PriceWise.Api.Telemetry.CorrelationIdMiddleware>();
     app.UseAuthentication();
     app.UseAuthorization();
 

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Repositories;
+using PriceWise.Application.Abstractions.Telemetry;
 using PriceWise.Application.AlertNotifications;
 using PriceWise.Domain.Entities;
 using PriceWise.Domain.Enums;
@@ -108,7 +109,8 @@ public sealed class AlertNotificationServiceTests
             webhookNotificationSender ?? new SpyWebhookNotificationSender(),
             emailNotificationSender ?? new SpyEmailNotificationSender(),
             NullLogger<AlertNotificationService>.Instance,
-            new NoOpDashboardCacheInvalidator());
+            new NoOpDashboardCacheInvalidator(),
+            new NoOpApplicationTelemetry());
     }
 
     private sealed class InMemoryAlertNotificationRepository : IAlertNotificationRepository

@@ -1,5 +1,6 @@
 using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Repositories;
+using PriceWise.Application.Abstractions.Telemetry;
 using PriceWise.Application.Common;
 using PriceWise.Application.Stores.Dtos;
 using PriceWise.Domain.Entities;
@@ -10,13 +11,16 @@ public sealed class StoreService : IStoreService
 {
     private readonly IStoreRepository storeRepository;
     private readonly IDashboardCacheInvalidator dashboardCacheInvalidator;
+    private readonly IApplicationTelemetry telemetry;
 
     public StoreService(
         IStoreRepository storeRepository,
-        IDashboardCacheInvalidator dashboardCacheInvalidator)
+        IDashboardCacheInvalidator dashboardCacheInvalidator,
+        IApplicationTelemetry telemetry)
     {
         this.storeRepository = storeRepository;
         this.dashboardCacheInvalidator = dashboardCacheInvalidator;
+        this.telemetry = telemetry;
     }
 
     public async Task<Result<StoreResponse>> CreateAsync(
@@ -24,11 +28,13 @@ public sealed class StoreService : IStoreService
         CreateStoreRequest request,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("StoreService.Create");
         var baseUrl = NormalizeUrl(request.BaseUrl);
         var existingStore = await storeRepository.GetByBaseUrlAsync(userId, baseUrl, cancellationToken);
 
         if (existingStore is not null)
         {
+            telemetry.RecordError(StoreErrors.BaseUrlAlreadyRegistered.Code);
             return Result<StoreResponse>.Failure(StoreErrors.BaseUrlAlreadyRegistered);
         }
 
@@ -36,6 +42,7 @@ public sealed class StoreService : IStoreService
 
         await storeRepository.AddAsync(store, cancellationToken);
         await dashboardCacheInvalidator.InvalidateStoreSummaryAsync(userId, store.Id, cancellationToken);
+        telemetry.RecordStoreCreated();
 
         return Result<StoreResponse>.Success(MapToResponse(store));
     }
@@ -44,6 +51,7 @@ public sealed class StoreService : IStoreService
         Guid userId,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("StoreService.List");
         var stores = await storeRepository.ListByUserIdAsync(userId, cancellationToken);
         var response = stores.Select(MapToResponse).ToArray();
 
@@ -55,11 +63,16 @@ public sealed class StoreService : IStoreService
         Guid storeId,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("StoreService.GetById");
         var store = await storeRepository.GetByIdAsync(storeId, userId, cancellationToken);
 
-        return store is null
-            ? Result<StoreResponse>.Failure(StoreErrors.StoreNotFound)
-            : Result<StoreResponse>.Success(MapToResponse(store));
+        if (store is null)
+        {
+            telemetry.RecordError(StoreErrors.StoreNotFound.Code);
+            return Result<StoreResponse>.Failure(StoreErrors.StoreNotFound);
+        }
+
+        return Result<StoreResponse>.Success(MapToResponse(store));
     }
 
     public async Task<Result<StoreResponse>> UpdateAsync(
@@ -68,10 +81,12 @@ public sealed class StoreService : IStoreService
         UpdateStoreRequest request,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("StoreService.Update");
         var store = await storeRepository.GetByIdAsync(storeId, userId, cancellationToken);
 
         if (store is null)
         {
+            telemetry.RecordError(StoreErrors.StoreNotFound.Code);
             return Result<StoreResponse>.Failure(StoreErrors.StoreNotFound);
         }
 
@@ -80,6 +95,7 @@ public sealed class StoreService : IStoreService
 
         if (existingStore is not null && existingStore.Id != store.Id)
         {
+            telemetry.RecordError(StoreErrors.BaseUrlAlreadyRegistered.Code);
             return Result<StoreResponse>.Failure(StoreErrors.BaseUrlAlreadyRegistered);
         }
 
@@ -96,10 +112,12 @@ public sealed class StoreService : IStoreService
         Guid storeId,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("StoreService.Delete");
         var store = await storeRepository.GetByIdAsync(storeId, userId, cancellationToken);
 
         if (store is null)
         {
+            telemetry.RecordError(StoreErrors.StoreNotFound.Code);
             return Result.Failure(StoreErrors.StoreNotFound);
         }
 

@@ -1,5 +1,6 @@
 using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Repositories;
+using PriceWise.Application.Abstractions.Telemetry;
 using PriceWise.Application.Common;
 using PriceWise.Application.PriceAlerts.Dtos;
 using PriceWise.Domain.Entities;
@@ -11,15 +12,18 @@ public sealed class PriceAlertService : IPriceAlertService
     private readonly IPriceAlertRepository priceAlertRepository;
     private readonly IProductRepository productRepository;
     private readonly IDashboardCacheInvalidator dashboardCacheInvalidator;
+    private readonly IApplicationTelemetry telemetry;
 
     public PriceAlertService(
         IPriceAlertRepository priceAlertRepository,
         IProductRepository productRepository,
-        IDashboardCacheInvalidator dashboardCacheInvalidator)
+        IDashboardCacheInvalidator dashboardCacheInvalidator,
+        IApplicationTelemetry telemetry)
     {
         this.priceAlertRepository = priceAlertRepository;
         this.productRepository = productRepository;
         this.dashboardCacheInvalidator = dashboardCacheInvalidator;
+        this.telemetry = telemetry;
     }
 
     public async Task<Result<PriceAlertResponse>> CreateAsync(
@@ -27,10 +31,12 @@ public sealed class PriceAlertService : IPriceAlertService
         CreatePriceAlertRequest request,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("PriceAlertService.Create");
         var product = await productRepository.GetByIdAsync(request.ProductId, userId, cancellationToken);
 
         if (product is null)
         {
+            telemetry.RecordError(PriceAlertErrors.ProductNotFound.Code);
             return Result<PriceAlertResponse>.Failure(PriceAlertErrors.ProductNotFound);
         }
 
@@ -41,6 +47,7 @@ public sealed class PriceAlertService : IPriceAlertService
 
         if (existingAlert is not null)
         {
+            telemetry.RecordError(PriceAlertErrors.ActiveAlertAlreadyExists.Code);
             return Result<PriceAlertResponse>.Failure(PriceAlertErrors.ActiveAlertAlreadyExists);
         }
 
@@ -49,6 +56,7 @@ public sealed class PriceAlertService : IPriceAlertService
         await priceAlertRepository.AddAsync(priceAlert, cancellationToken);
         await dashboardCacheInvalidator.InvalidateAlertSummaryAsync(userId, cancellationToken);
         await dashboardCacheInvalidator.InvalidateProductSummaryAsync(userId, priceAlert.ProductId, cancellationToken);
+        telemetry.RecordPriceAlertCreated();
 
         return Result<PriceAlertResponse>.Success(MapToResponse(priceAlert));
     }
@@ -57,6 +65,7 @@ public sealed class PriceAlertService : IPriceAlertService
         Guid userId,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("PriceAlertService.List");
         var priceAlerts = await priceAlertRepository.ListByUserIdAsync(userId, cancellationToken);
         var response = priceAlerts.Select(MapToResponse).ToArray();
 
@@ -68,11 +77,16 @@ public sealed class PriceAlertService : IPriceAlertService
         Guid priceAlertId,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("PriceAlertService.GetById");
         var priceAlert = await priceAlertRepository.GetByIdAsync(priceAlertId, userId, cancellationToken);
 
-        return priceAlert is null
-            ? Result<PriceAlertResponse>.Failure(PriceAlertErrors.PriceAlertNotFound)
-            : Result<PriceAlertResponse>.Success(MapToResponse(priceAlert));
+        if (priceAlert is null)
+        {
+            telemetry.RecordError(PriceAlertErrors.PriceAlertNotFound.Code);
+            return Result<PriceAlertResponse>.Failure(PriceAlertErrors.PriceAlertNotFound);
+        }
+
+        return Result<PriceAlertResponse>.Success(MapToResponse(priceAlert));
     }
 
     public async Task<Result<PriceAlertResponse>> UpdateAsync(
@@ -81,10 +95,12 @@ public sealed class PriceAlertService : IPriceAlertService
         UpdatePriceAlertRequest request,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("PriceAlertService.Update");
         var priceAlert = await priceAlertRepository.GetByIdAsync(priceAlertId, userId, cancellationToken);
 
         if (priceAlert is null)
         {
+            telemetry.RecordError(PriceAlertErrors.PriceAlertNotFound.Code);
             return Result<PriceAlertResponse>.Failure(PriceAlertErrors.PriceAlertNotFound);
         }
 
@@ -92,6 +108,7 @@ public sealed class PriceAlertService : IPriceAlertService
 
         if (product is null)
         {
+            telemetry.RecordError(PriceAlertErrors.ProductNotFound.Code);
             return Result<PriceAlertResponse>.Failure(PriceAlertErrors.ProductNotFound);
         }
 
@@ -109,10 +126,12 @@ public sealed class PriceAlertService : IPriceAlertService
         Guid priceAlertId,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("PriceAlertService.Delete");
         var priceAlert = await priceAlertRepository.GetByIdAsync(priceAlertId, userId, cancellationToken);
 
         if (priceAlert is null)
         {
+            telemetry.RecordError(PriceAlertErrors.PriceAlertNotFound.Code);
             return Result.Failure(PriceAlertErrors.PriceAlertNotFound);
         }
 

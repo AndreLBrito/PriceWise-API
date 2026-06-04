@@ -1,5 +1,6 @@
 using PriceWise.Application.Abstractions.Auth;
 using PriceWise.Application.Abstractions.Repositories;
+using PriceWise.Application.Abstractions.Telemetry;
 using PriceWise.Application.Authentication.Dtos;
 using PriceWise.Application.Common;
 using PriceWise.Domain.Entities;
@@ -13,30 +14,35 @@ public sealed class AuthService : IAuthService
     private readonly IRefreshTokenProvider refreshTokenProvider;
     private readonly IRefreshTokenRepository refreshTokenRepository;
     private readonly IUserRepository userRepository;
+    private readonly IApplicationTelemetry telemetry;
 
     public AuthService(
         IUserRepository userRepository,
         IRefreshTokenRepository refreshTokenRepository,
         IPasswordHasher passwordHasher,
         IAccessTokenProvider accessTokenProvider,
-        IRefreshTokenProvider refreshTokenProvider)
+        IRefreshTokenProvider refreshTokenProvider,
+        IApplicationTelemetry telemetry)
     {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordHasher = passwordHasher;
         this.accessTokenProvider = accessTokenProvider;
         this.refreshTokenProvider = refreshTokenProvider;
+        this.telemetry = telemetry;
     }
 
     public async Task<Result<AuthResponse>> RegisterAsync(
         RegisterRequest request,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("AuthService.Register");
         var normalizedEmail = NormalizeEmail(request.Email);
         var existingUser = await userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
 
         if (existingUser is not null)
         {
+            telemetry.RecordError(AuthErrors.EmailAlreadyRegistered.Code);
             return Result<AuthResponse>.Failure(AuthErrors.EmailAlreadyRegistered);
         }
 
@@ -54,10 +60,12 @@ public sealed class AuthService : IAuthService
         LoginRequest request,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("AuthService.Login");
         var user = await userRepository.GetByEmailAsync(NormalizeEmail(request.Email), cancellationToken);
 
         if (user is null || !user.IsActive || !passwordHasher.Verify(request.Password, user.PasswordHash))
         {
+            telemetry.RecordError(AuthErrors.InvalidCredentials.Code);
             return Result<AuthResponse>.Failure(AuthErrors.InvalidCredentials);
         }
 
@@ -70,11 +78,13 @@ public sealed class AuthService : IAuthService
         RefreshTokenRequest request,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("AuthService.RefreshToken");
         var tokenHash = refreshTokenProvider.Hash(request.RefreshToken);
         var currentRefreshToken = await refreshTokenRepository.GetByTokenHashAsync(tokenHash, cancellationToken);
 
         if (currentRefreshToken is null || !currentRefreshToken.IsActive)
         {
+            telemetry.RecordError(AuthErrors.InvalidRefreshToken.Code);
             return Result<AuthResponse>.Failure(AuthErrors.InvalidRefreshToken);
         }
 
@@ -82,6 +92,7 @@ public sealed class AuthService : IAuthService
 
         if (user is null || !user.IsActive)
         {
+            telemetry.RecordError(AuthErrors.InvalidRefreshToken.Code);
             return Result<AuthResponse>.Failure(AuthErrors.InvalidRefreshToken);
         }
 
@@ -97,6 +108,7 @@ public sealed class AuthService : IAuthService
         LogoutRequest request,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("AuthService.Logout");
         var tokenHash = refreshTokenProvider.Hash(request.RefreshToken);
         var refreshToken = await refreshTokenRepository.GetByTokenHashAsync(tokenHash, cancellationToken);
 

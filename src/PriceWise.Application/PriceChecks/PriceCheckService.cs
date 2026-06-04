@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using PriceWise.Application.Abstractions.Repositories;
+using PriceWise.Application.Abstractions.Telemetry;
 using PriceWise.Application.Common;
 using PriceWise.Application.PriceChecks.Dtos;
 using PriceWise.Application.PriceHistories;
@@ -19,21 +20,32 @@ public sealed class PriceCheckService : IPriceCheckService
     private readonly IPriceHistoryService priceHistoryService;
     private readonly PriceCheckOptions options;
     private readonly ILogger<PriceCheckService> logger;
+    private readonly IApplicationTelemetry telemetry;
 
     public PriceCheckService(
         IPriceCheckRepository priceCheckRepository,
         IPriceHistoryService priceHistoryService,
         IOptions<PriceCheckOptions> options,
-        ILogger<PriceCheckService> logger)
+        ILogger<PriceCheckService> logger,
+        IApplicationTelemetry telemetry)
     {
         this.priceCheckRepository = priceCheckRepository;
         this.priceHistoryService = priceHistoryService;
         this.options = options.Value;
         this.logger = logger;
+        this.telemetry = telemetry;
     }
 
     public async Task<Result<PriceCheckRunResponse>> RunAsync(CancellationToken cancellationToken = default)
     {
+        return await RunAsync(PriceCheckTrigger.Manual, cancellationToken);
+    }
+
+    public async Task<Result<PriceCheckRunResponse>> RunAsync(
+        PriceCheckTrigger trigger,
+        CancellationToken cancellationToken = default)
+    {
+        using var activity = telemetry.StartActivity("PriceCheckService.Run");
         var startedAt = DateTime.UtcNow;
         var maxProducts = Math.Max(1, options.MaxProductsPerExecution);
         var intervalInMinutes = Math.Max(1, options.IntervalInMinutes);
@@ -103,6 +115,7 @@ public sealed class PriceCheckService : IPriceCheckService
                 historiesCreated,
                 productsSkipped,
                 productsFailed);
+            telemetry.RecordPriceCheck(trigger);
 
             return Result<PriceCheckRunResponse>.Success(new PriceCheckRunResponse(
                 completedAt,
@@ -115,6 +128,7 @@ public sealed class PriceCheckService : IPriceCheckService
         }
         catch (Exception exception)
         {
+            telemetry.RecordError(exception);
             var completedAt = DateTime.UtcNow;
             const string message = "A verificação de preços falhou durante a execução.";
 
@@ -139,6 +153,7 @@ public sealed class PriceCheckService : IPriceCheckService
 
     public async Task<Result<PriceCheckStatusResponse>> GetStatusAsync(CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("PriceCheckService.GetStatus");
         var lastExecution = await priceCheckRepository.GetLastExecutionAsync(cancellationToken);
 
         return Result<PriceCheckStatusResponse>.Success(new PriceCheckStatusResponse(

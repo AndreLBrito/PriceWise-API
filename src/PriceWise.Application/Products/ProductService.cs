@@ -1,5 +1,6 @@
 using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Repositories;
+using PriceWise.Application.Abstractions.Telemetry;
 using PriceWise.Application.Common;
 using PriceWise.Application.Products.Dtos;
 using PriceWise.Domain.Entities;
@@ -10,13 +11,16 @@ public sealed class ProductService : IProductService
 {
     private readonly IProductRepository productRepository;
     private readonly IDashboardCacheInvalidator dashboardCacheInvalidator;
+    private readonly IApplicationTelemetry telemetry;
 
     public ProductService(
         IProductRepository productRepository,
-        IDashboardCacheInvalidator dashboardCacheInvalidator)
+        IDashboardCacheInvalidator dashboardCacheInvalidator,
+        IApplicationTelemetry telemetry)
     {
         this.productRepository = productRepository;
         this.dashboardCacheInvalidator = dashboardCacheInvalidator;
+        this.telemetry = telemetry;
     }
 
     public async Task<Result<ProductResponse>> CreateAsync(
@@ -24,6 +28,7 @@ public sealed class ProductService : IProductService
         CreateProductRequest request,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("ProductService.Create");
         var productUrl = NormalizeUrl(request.ProductUrl);
         var existingProduct = await productRepository.GetByProductUrlAsync(
             userId,
@@ -32,6 +37,7 @@ public sealed class ProductService : IProductService
 
         if (existingProduct is not null)
         {
+            telemetry.RecordError(ProductErrors.ProductUrlAlreadyRegistered.Code);
             return Result<ProductResponse>.Failure(ProductErrors.ProductUrlAlreadyRegistered);
         }
 
@@ -46,6 +52,7 @@ public sealed class ProductService : IProductService
 
         await productRepository.AddAsync(product, cancellationToken);
         await dashboardCacheInvalidator.InvalidateProductSummaryAsync(userId, product.Id, cancellationToken);
+        telemetry.RecordProductCreated();
 
         return Result<ProductResponse>.Success(MapToResponse(product));
     }
@@ -54,6 +61,7 @@ public sealed class ProductService : IProductService
         Guid userId,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("ProductService.List");
         var products = await productRepository.ListByUserIdAsync(userId, cancellationToken);
         var response = products
             .Select(MapToResponse)
@@ -67,11 +75,16 @@ public sealed class ProductService : IProductService
         Guid productId,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("ProductService.GetById");
         var product = await productRepository.GetByIdAsync(productId, userId, cancellationToken);
 
-        return product is null
-            ? Result<ProductResponse>.Failure(ProductErrors.ProductNotFound)
-            : Result<ProductResponse>.Success(MapToResponse(product));
+        if (product is null)
+        {
+            telemetry.RecordError(ProductErrors.ProductNotFound.Code);
+            return Result<ProductResponse>.Failure(ProductErrors.ProductNotFound);
+        }
+
+        return Result<ProductResponse>.Success(MapToResponse(product));
     }
 
     public async Task<Result<ProductResponse>> UpdateAsync(
@@ -80,10 +93,12 @@ public sealed class ProductService : IProductService
         UpdateProductRequest request,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("ProductService.Update");
         var product = await productRepository.GetByIdAsync(productId, userId, cancellationToken);
 
         if (product is null)
         {
+            telemetry.RecordError(ProductErrors.ProductNotFound.Code);
             return Result<ProductResponse>.Failure(ProductErrors.ProductNotFound);
         }
 
@@ -95,6 +110,7 @@ public sealed class ProductService : IProductService
 
         if (existingProduct is not null && existingProduct.Id != product.Id)
         {
+            telemetry.RecordError(ProductErrors.ProductUrlAlreadyRegistered.Code);
             return Result<ProductResponse>.Failure(ProductErrors.ProductUrlAlreadyRegistered);
         }
 
@@ -117,10 +133,12 @@ public sealed class ProductService : IProductService
         Guid productId,
         CancellationToken cancellationToken = default)
     {
+        using var activity = telemetry.StartActivity("ProductService.Delete");
         var product = await productRepository.GetByIdAsync(productId, userId, cancellationToken);
 
         if (product is null)
         {
+            telemetry.RecordError(ProductErrors.ProductNotFound.Code);
             return Result.Failure(ProductErrors.ProductNotFound);
         }
 

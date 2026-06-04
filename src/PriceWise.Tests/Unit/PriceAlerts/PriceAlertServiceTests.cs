@@ -1,6 +1,7 @@
 using FluentAssertions;
 using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Repositories;
+using PriceWise.Application.Abstractions.Telemetry;
 using PriceWise.Application.PriceAlerts;
 using PriceWise.Application.PriceAlerts.Dtos;
 using PriceWise.Domain.Entities;
@@ -95,7 +96,8 @@ public sealed class PriceAlertServiceTests
         return new PriceAlertService(
             priceAlertRepository,
             productRepository,
-            new NoOpDashboardCacheInvalidator());
+            new NoOpDashboardCacheInvalidator(),
+            new NoOpApplicationTelemetry());
     }
 
     private sealed class InMemoryPriceAlertRepository : IPriceAlertRepository

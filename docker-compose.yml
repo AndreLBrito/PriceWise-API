@@ -27,6 +27,11 @@ services:
       PriceCheck__IntervalInMinutes: ${PRICE_CHECK_INTERVAL_IN_MINUTES:-30}
       PriceCheck__MaxProductsPerExecution: ${PRICE_CHECK_MAX_PRODUCTS_PER_EXECUTION:-50}
       RateLimiting__Enabled: ${RATE_LIMITING_ENABLED:-true}
+      DataSeed__Enabled: ${DATA_SEED_ENABLED:-true}
+      DataSeed__CreateDemoUser: ${DATA_SEED_CREATE_DEMO_USER:-true}
+      DataSeed__DemoUserEmail: ${DATA_SEED_DEMO_USER_EMAIL:-demo@pricewise.com}
+      DataSeed__DemoUserPassword: ${DATA_SEED_DEMO_USER_PASSWORD:-Demo@123456}
+      DataSeed__CreateDemoData: ${DATA_SEED_CREATE_DEMO_DATA:-true}
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:

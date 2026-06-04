@@ -1,3 +1,4 @@
+using PriceWise.Application.AlertNotifications;
 using FluentAssertions;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.PriceHistories;
@@ -110,7 +111,11 @@ public sealed class PriceHistoryServiceTests
         IStoreRepository storeRepository,
         IPriceHistoryRepository priceHistoryRepository)
     {
-        return new PriceHistoryService(priceHistoryRepository, productRepository, storeRepository);
+        return new PriceHistoryService(
+            priceHistoryRepository,
+            productRepository,
+            storeRepository,
+            new NoOpAlertNotificationService());
     }
 
     private static CreatePriceHistoryRequest CreateRequest(Guid productId, Guid storeId, DateTime? capturedAt)
@@ -262,5 +267,28 @@ public sealed class PriceHistoryServiceTests
         public Task UpdateAsync(PriceHistory entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    private sealed class NoOpAlertNotificationService : IAlertNotificationService
+    {
+        public Task CheckPriceAlertsAsync(PriceHistory priceHistory, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<PriceWise.Application.Common.Result<IReadOnlyCollection<PriceWise.Application.AlertNotifications.Dtos.AlertNotificationResponse>>> ListAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<PriceWise.Application.Common.Result<PriceWise.Application.AlertNotifications.Dtos.AlertNotificationResponse>> GetByIdAsync(
+            Guid userId,
+            Guid notificationId,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

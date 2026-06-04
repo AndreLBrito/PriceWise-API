@@ -34,6 +34,7 @@ try
     }
 
     await app.UseDatabaseMigrationsAsync();
+    await app.UseDemoDataSeedAsync();
 
     app.UseSerilogRequestLogging();
     app.UseExceptionHandler();

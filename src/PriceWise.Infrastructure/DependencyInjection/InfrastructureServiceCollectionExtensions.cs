@@ -8,6 +8,7 @@ using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Infrastructure.Authentication;
 using PriceWise.Infrastructure.Database;
+using PriceWise.Infrastructure.DataSeeding;
 using PriceWise.Infrastructure.Notifications;
 using PriceWise.Infrastructure.Repositories;
 
@@ -52,6 +53,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IWebhookNotificationSender, WebhookNotificationSender>();
         services.AddScoped<IEmailNotificationSender, EmailNotificationSender>();
         services.AddPriceCheckBackgroundJobs(configuration);
+        services.AddDataSeed(configuration);
 
         services.AddFluentMigratorCore()
             .ConfigureRunner(runner => runner

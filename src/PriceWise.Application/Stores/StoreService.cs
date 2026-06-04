@@ -1,3 +1,4 @@
+using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.Common;
 using PriceWise.Application.Stores.Dtos;
@@ -8,10 +9,14 @@ namespace PriceWise.Application.Stores;
 public sealed class StoreService : IStoreService
 {
     private readonly IStoreRepository storeRepository;
+    private readonly IDashboardCacheInvalidator dashboardCacheInvalidator;
 
-    public StoreService(IStoreRepository storeRepository)
+    public StoreService(
+        IStoreRepository storeRepository,
+        IDashboardCacheInvalidator dashboardCacheInvalidator)
     {
         this.storeRepository = storeRepository;
+        this.dashboardCacheInvalidator = dashboardCacheInvalidator;
     }
 
     public async Task<Result<StoreResponse>> CreateAsync(
@@ -30,6 +35,7 @@ public sealed class StoreService : IStoreService
         var store = Store.Create(userId, request.Name, baseUrl, request.LogoUrl);
 
         await storeRepository.AddAsync(store, cancellationToken);
+        await dashboardCacheInvalidator.InvalidateStoreSummaryAsync(userId, store.Id, cancellationToken);
 
         return Result<StoreResponse>.Success(MapToResponse(store));
     }
@@ -80,6 +86,7 @@ public sealed class StoreService : IStoreService
         store.Update(request.Name, baseUrl, request.LogoUrl);
 
         await storeRepository.UpdateAsync(store, cancellationToken);
+        await dashboardCacheInvalidator.InvalidateStoreSummaryAsync(userId, store.Id, cancellationToken);
 
         return Result<StoreResponse>.Success(MapToResponse(store));
     }
@@ -98,6 +105,7 @@ public sealed class StoreService : IStoreService
 
         store.Deactivate();
         await storeRepository.UpdateAsync(store, cancellationToken);
+        await dashboardCacheInvalidator.InvalidateStoreSummaryAsync(userId, store.Id, cancellationToken);
 
         return Result.Success();
     }

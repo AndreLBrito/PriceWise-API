@@ -35,6 +35,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton(databaseOptions);
         services.AddSingleton(jwtOptions);
         services.AddSingleton(_ => NpgsqlDataSource.Create(databaseOptions.ConnectionString));
+        services.AddCacheInfrastructure(configuration);
         services.AddSingleton<IDbConnectionFactory, NpgsqlConnectionFactory>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IAccessTokenProvider, JwtTokenProvider>();

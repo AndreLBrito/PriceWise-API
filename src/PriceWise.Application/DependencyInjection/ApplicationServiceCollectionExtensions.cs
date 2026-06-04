@@ -1,5 +1,6 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Services;
 
 namespace PriceWise.Application.DependencyInjection;
@@ -9,6 +10,7 @@ public static class ApplicationServiceCollectionExtensions
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddValidatorsFromAssembly(typeof(ApplicationServiceCollectionExtensions).Assembly);
+        services.AddScoped<IDashboardCacheInvalidator, DashboardCacheInvalidator>();
         services.AddApplicationServices();
 
         return services;

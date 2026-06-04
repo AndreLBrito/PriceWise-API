@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.AlertNotifications.Dtos;
@@ -16,6 +17,7 @@ public sealed class AlertNotificationService : IAlertNotificationService
     private readonly IWebhookNotificationSender webhookNotificationSender;
     private readonly IEmailNotificationSender emailNotificationSender;
     private readonly ILogger<AlertNotificationService> logger;
+    private readonly IDashboardCacheInvalidator dashboardCacheInvalidator;
 
     public AlertNotificationService(
         IAlertNotificationRepository alertNotificationRepository,
@@ -23,7 +25,8 @@ public sealed class AlertNotificationService : IAlertNotificationService
         INotificationChannelRepository notificationChannelRepository,
         IWebhookNotificationSender webhookNotificationSender,
         IEmailNotificationSender emailNotificationSender,
-        ILogger<AlertNotificationService> logger)
+        ILogger<AlertNotificationService> logger,
+        IDashboardCacheInvalidator dashboardCacheInvalidator)
     {
         this.alertNotificationRepository = alertNotificationRepository;
         this.priceAlertRepository = priceAlertRepository;
@@ -31,6 +34,7 @@ public sealed class AlertNotificationService : IAlertNotificationService
         this.webhookNotificationSender = webhookNotificationSender;
         this.emailNotificationSender = emailNotificationSender;
         this.logger = logger;
+        this.dashboardCacheInvalidator = dashboardCacheInvalidator;
     }
 
     public async Task CheckPriceAlertsAsync(
@@ -63,6 +67,7 @@ public sealed class AlertNotificationService : IAlertNotificationService
                 priceAlert.TargetPrice);
 
             await alertNotificationRepository.AddAsync(notification, cancellationToken);
+            await dashboardCacheInvalidator.InvalidateAlertSummaryAsync(notification.UserId, cancellationToken);
             await SendNotificationAsync(notification, cancellationToken);
         }
     }

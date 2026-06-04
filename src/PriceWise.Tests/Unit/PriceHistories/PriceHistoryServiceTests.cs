@@ -1,3 +1,4 @@
+using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.AlertNotifications;
 using FluentAssertions;
 using PriceWise.Application.Abstractions.Repositories;
@@ -115,7 +116,8 @@ public sealed class PriceHistoryServiceTests
             priceHistoryRepository,
             productRepository,
             storeRepository,
-            new NoOpAlertNotificationService());
+            new NoOpAlertNotificationService(),
+            new NoOpDashboardCacheInvalidator());
     }
 
     private static CreatePriceHistoryRequest CreateRequest(Guid productId, Guid storeId, DateTime? capturedAt)

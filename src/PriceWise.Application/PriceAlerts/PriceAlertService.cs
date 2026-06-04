@@ -1,3 +1,4 @@
+using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.Common;
 using PriceWise.Application.PriceAlerts.Dtos;
@@ -9,13 +10,16 @@ public sealed class PriceAlertService : IPriceAlertService
 {
     private readonly IPriceAlertRepository priceAlertRepository;
     private readonly IProductRepository productRepository;
+    private readonly IDashboardCacheInvalidator dashboardCacheInvalidator;
 
     public PriceAlertService(
         IPriceAlertRepository priceAlertRepository,
-        IProductRepository productRepository)
+        IProductRepository productRepository,
+        IDashboardCacheInvalidator dashboardCacheInvalidator)
     {
         this.priceAlertRepository = priceAlertRepository;
         this.productRepository = productRepository;
+        this.dashboardCacheInvalidator = dashboardCacheInvalidator;
     }
 
     public async Task<Result<PriceAlertResponse>> CreateAsync(
@@ -43,6 +47,8 @@ public sealed class PriceAlertService : IPriceAlertService
         var priceAlert = PriceAlert.Create(userId, request.ProductId, request.TargetPrice);
 
         await priceAlertRepository.AddAsync(priceAlert, cancellationToken);
+        await dashboardCacheInvalidator.InvalidateAlertSummaryAsync(userId, cancellationToken);
+        await dashboardCacheInvalidator.InvalidateProductSummaryAsync(userId, priceAlert.ProductId, cancellationToken);
 
         return Result<PriceAlertResponse>.Success(MapToResponse(priceAlert));
     }
@@ -92,6 +98,8 @@ public sealed class PriceAlertService : IPriceAlertService
         priceAlert.Update(request.TargetPrice);
 
         await priceAlertRepository.UpdateAsync(priceAlert, cancellationToken);
+        await dashboardCacheInvalidator.InvalidateAlertSummaryAsync(userId, cancellationToken);
+        await dashboardCacheInvalidator.InvalidateProductSummaryAsync(userId, priceAlert.ProductId, cancellationToken);
 
         return Result<PriceAlertResponse>.Success(MapToResponse(priceAlert));
     }
@@ -110,6 +118,8 @@ public sealed class PriceAlertService : IPriceAlertService
 
         priceAlert.Deactivate();
         await priceAlertRepository.UpdateAsync(priceAlert, cancellationToken);
+        await dashboardCacheInvalidator.InvalidateAlertSummaryAsync(userId, cancellationToken);
+        await dashboardCacheInvalidator.InvalidateProductSummaryAsync(userId, priceAlert.ProductId, cancellationToken);
 
         return Result.Success();
     }

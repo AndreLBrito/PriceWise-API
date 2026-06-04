@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.AlertNotifications;
@@ -106,7 +107,8 @@ public sealed class AlertNotificationServiceTests
             notificationChannelRepository ?? new InMemoryNotificationChannelRepository(),
             webhookNotificationSender ?? new SpyWebhookNotificationSender(),
             emailNotificationSender ?? new SpyEmailNotificationSender(),
-            NullLogger<AlertNotificationService>.Instance);
+            NullLogger<AlertNotificationService>.Instance,
+            new NoOpDashboardCacheInvalidator());
     }
 
     private sealed class InMemoryAlertNotificationRepository : IAlertNotificationRepository

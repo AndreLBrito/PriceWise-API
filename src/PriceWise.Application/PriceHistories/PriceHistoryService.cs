@@ -1,3 +1,4 @@
+using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.AlertNotifications;
 using PriceWise.Application.Common;
@@ -12,17 +13,20 @@ public sealed class PriceHistoryService : IPriceHistoryService
     private readonly IProductRepository productRepository;
     private readonly IStoreRepository storeRepository;
     private readonly IAlertNotificationService alertNotificationService;
+    private readonly IDashboardCacheInvalidator dashboardCacheInvalidator;
 
     public PriceHistoryService(
         IPriceHistoryRepository priceHistoryRepository,
         IProductRepository productRepository,
         IStoreRepository storeRepository,
-        IAlertNotificationService alertNotificationService)
+        IAlertNotificationService alertNotificationService,
+        IDashboardCacheInvalidator dashboardCacheInvalidator)
     {
         this.priceHistoryRepository = priceHistoryRepository;
         this.productRepository = productRepository;
         this.storeRepository = storeRepository;
         this.alertNotificationService = alertNotificationService;
+        this.dashboardCacheInvalidator = dashboardCacheInvalidator;
     }
 
     public async Task<Result<PriceHistoryResponse>> CreateAsync(
@@ -54,6 +58,8 @@ public sealed class PriceHistoryService : IPriceHistoryService
             request.SourceUrl);
 
         await priceHistoryRepository.AddAsync(priceHistory, cancellationToken);
+        await dashboardCacheInvalidator.InvalidateProductSummaryAsync(userId, priceHistory.ProductId, cancellationToken);
+        await dashboardCacheInvalidator.InvalidateStoreSummaryAsync(userId, priceHistory.StoreId, cancellationToken);
         await alertNotificationService.CheckPriceAlertsAsync(priceHistory, cancellationToken);
 
         return Result<PriceHistoryResponse>.Success(MapToResponse(priceHistory));

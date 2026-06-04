@@ -1,4 +1,5 @@
 using FluentAssertions;
+using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.Stores;
 using PriceWise.Application.Stores.Dtos;
@@ -12,7 +13,7 @@ public sealed class StoreServiceTests
     public async Task CreateAsyncCreatesActiveStore()
     {
         var repository = new InMemoryStoreRepository();
-        var service = new StoreService(repository);
+        var service = new StoreService(repository, new NoOpDashboardCacheInvalidator());
         var userId = Guid.NewGuid();
 
         var result = await service.CreateAsync(userId, CreateRequest("https://example.com"));
@@ -27,7 +28,7 @@ public sealed class StoreServiceTests
     public async Task CreateAsyncFailsWhenBaseUrlAlreadyExistsForSameUser()
     {
         var repository = new InMemoryStoreRepository();
-        var service = new StoreService(repository);
+        var service = new StoreService(repository, new NoOpDashboardCacheInvalidator());
         var userId = Guid.NewGuid();
         await repository.AddAsync(Store.Create(userId, "Loja", "https://example.com", null));
 
@@ -41,7 +42,7 @@ public sealed class StoreServiceTests
     public async Task GetByIdAsyncDoesNotReturnStoreFromAnotherUser()
     {
         var repository = new InMemoryStoreRepository();
-        var service = new StoreService(repository);
+        var service = new StoreService(repository, new NoOpDashboardCacheInvalidator());
         var ownerId = Guid.NewGuid();
         var anotherUserId = Guid.NewGuid();
         var store = Store.Create(ownerId, "Loja", "https://example.com", null);
@@ -57,7 +58,7 @@ public sealed class StoreServiceTests
     public async Task DeleteAsyncDeactivatesStore()
     {
         var repository = new InMemoryStoreRepository();
-        var service = new StoreService(repository);
+        var service = new StoreService(repository, new NoOpDashboardCacheInvalidator());
         var userId = Guid.NewGuid();
         var store = Store.Create(userId, "Loja", "https://example.com", null);
         await repository.AddAsync(store);

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.Dashboard;
 using PriceWise.Application.Dashboard.Dtos;
@@ -15,7 +16,8 @@ public sealed class DashboardServiceTests
         var service = new DashboardService(
             dashboardRepository,
             new InMemoryProductRepository(),
-            new InMemoryStoreRepository());
+            new InMemoryStoreRepository(),
+            new NoOpCacheService());
         var userId = Guid.NewGuid();
 
         var result = await service.GetSummaryAsync(userId);
@@ -33,7 +35,8 @@ public sealed class DashboardServiceTests
         var service = new DashboardService(
             new InMemoryDashboardRepository(),
             productRepository,
-            new InMemoryStoreRepository());
+            new InMemoryStoreRepository(),
+            new NoOpCacheService());
         var userId = Guid.NewGuid();
         var productId = Guid.NewGuid();
 
@@ -51,7 +54,8 @@ public sealed class DashboardServiceTests
         var service = new DashboardService(
             dashboardRepository,
             productRepository,
-            new InMemoryStoreRepository());
+            new InMemoryStoreRepository(),
+            new NoOpCacheService());
         var userId = Guid.NewGuid();
         var product = Product.Create(
             userId,
@@ -78,7 +82,8 @@ public sealed class DashboardServiceTests
         var service = new DashboardService(
             new InMemoryDashboardRepository(),
             new InMemoryProductRepository(),
-            new InMemoryStoreRepository());
+            new InMemoryStoreRepository(),
+            new NoOpCacheService());
         var userId = Guid.NewGuid();
         var storeId = Guid.NewGuid();
 
@@ -96,7 +101,8 @@ public sealed class DashboardServiceTests
         var service = new DashboardService(
             dashboardRepository,
             new InMemoryProductRepository(),
-            storeRepository);
+            storeRepository,
+            new NoOpCacheService());
         var userId = Guid.NewGuid();
         var store = Store.Create(userId, "Store", "https://store.example.com", null);
         await storeRepository.AddAsync(store);
@@ -117,7 +123,8 @@ public sealed class DashboardServiceTests
         var service = new DashboardService(
             dashboardRepository,
             new InMemoryProductRepository(),
-            new InMemoryStoreRepository());
+            new InMemoryStoreRepository(),
+            new NoOpCacheService());
         var userId = Guid.NewGuid();
 
         var result = await service.GetAlertSummaryAsync(userId);

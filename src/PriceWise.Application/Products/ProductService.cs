@@ -1,3 +1,4 @@
+using PriceWise.Application.Abstractions.Caching;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.Common;
 using PriceWise.Application.Products.Dtos;
@@ -8,10 +9,14 @@ namespace PriceWise.Application.Products;
 public sealed class ProductService : IProductService
 {
     private readonly IProductRepository productRepository;
+    private readonly IDashboardCacheInvalidator dashboardCacheInvalidator;
 
-    public ProductService(IProductRepository productRepository)
+    public ProductService(
+        IProductRepository productRepository,
+        IDashboardCacheInvalidator dashboardCacheInvalidator)
     {
         this.productRepository = productRepository;
+        this.dashboardCacheInvalidator = dashboardCacheInvalidator;
     }
 
     public async Task<Result<ProductResponse>> CreateAsync(
@@ -40,6 +45,7 @@ public sealed class ProductService : IProductService
             request.ImageUrl);
 
         await productRepository.AddAsync(product, cancellationToken);
+        await dashboardCacheInvalidator.InvalidateProductSummaryAsync(userId, product.Id, cancellationToken);
 
         return Result<ProductResponse>.Success(MapToResponse(product));
     }
@@ -101,6 +107,7 @@ public sealed class ProductService : IProductService
             request.ImageUrl);
 
         await productRepository.UpdateAsync(product, cancellationToken);
+        await dashboardCacheInvalidator.InvalidateProductSummaryAsync(userId, product.Id, cancellationToken);
 
         return Result<ProductResponse>.Success(MapToResponse(product));
     }
@@ -119,6 +126,7 @@ public sealed class ProductService : IProductService
 
         product.Deactivate();
         await productRepository.UpdateAsync(product, cancellationToken);
+        await dashboardCacheInvalidator.InvalidateProductSummaryAsync(userId, product.Id, cancellationToken);
 
         return Result.Success();
     }

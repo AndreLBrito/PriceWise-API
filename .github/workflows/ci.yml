@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore PriceWise.slnx
+
+      - name: Validate formatting
+        run: dotnet format PriceWise.slnx --verify-no-changes --no-restore --verbosity minimal
+
+      - name: Build
+        run: dotnet build PriceWise.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: >
+          dotnet test PriceWise.slnx
+          --configuration Release
+          --no-build
+          --logger "trx;LogFileName=test-results.trx"
+          --results-directory TestResults
+
+      - name: Publish test results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/**/*.trx
+          if-no-files-found: ignore
+
+      - name: Validate docker compose
+        run: docker compose -f docker-compose.yml config
+
+      # TODO: Publish Docker image when deployment target is defined.

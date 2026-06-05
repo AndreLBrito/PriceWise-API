@@ -177,6 +177,50 @@ Os endpoints exigem policy `AdminOnly`. O `AuditLog` remove dados sensiveis ante
 
 O header `X-Correlation-Id` pode ser enviado pelo cliente. Quando ausente, a API cria um identificador automaticamente. O mesmo valor e retornado na resposta, incluído nos logs do Serilog, nos erros padronizados e nos registros de auditoria.
 
+## Outbox, retries e PriceProvider
+
+As notificacoes de alerta usam Outbox Pattern. Quando uma `AlertNotification` e criada, a API cria uma `OutboxMessage` para cada canal ativo do usuario. O request principal nao chama Webhook ou SMTP diretamente.
+
+O `OutboxProcessorJob`, executado pelo Quartz.NET, processa mensagens pendentes em lote. Em caso de falha, a mensagem recebe nova tentativa com backoff exponencial simples. Quando o limite de tentativas e atingido, o status fica como `Failed`.
+
+Configuracao:
+
+```json
+"Outbox": {
+  "Enabled": true,
+  "IntervalInSeconds": 30,
+  "MaxRetries": 5,
+  "BatchSize": 20
+}
+```
+
+Status possiveis:
+
+- `Pending`
+- `Processing`
+- `Processed`
+- `Failed`
+
+Endpoints administrativos:
+
+- `GET /api/v1/admin/outbox`
+- `GET /api/v1/admin/outbox/{id}`
+- `POST /api/v1/admin/outbox/{id}/retry`
+
+O retry manual so e permitido para mensagens com status `Failed` e exige policy `AdminOnly`.
+
+O PriceCheck usa a abstracao `IPriceProvider`. A implementacao atual e `MockPriceProvider`, que gera precos realistas com pequena variacao em relacao ao ultimo preco conhecido. Essa estrutura deixa o projeto pronto para trocar por uma integracao real futuramente, sem alterar o fluxo do `PriceCheckService`.
+
+Configuracao:
+
+```json
+"PriceProvider": {
+  "MinimumBasePrice": 50,
+  "MaximumBasePrice": 1500,
+  "VariationPercentage": 0.03
+}
+```
+
 ## Dados de demonstracao
 
 Em ambiente de desenvolvimento, a API pode criar dados iniciais para demonstrar o Dashboard e os principais fluxos do projeto.
@@ -262,7 +306,7 @@ Para testar no Scalar, faca login com o usuario admin, copie o `AccessToken` e u
 
 ## Webhook Notifications
 
-Quando uma `AlertNotification` e criada, canais ativos do tipo `Webhook` recebem um `POST` com `application/json` para a URL configurada em `Destination`.
+Quando uma `AlertNotification` e criada, canais ativos do tipo `Webhook` sao enfileirados na Outbox. O processor envia um `POST` com `application/json` para a URL configurada em `Destination`.
 
 Configuracao:
 
@@ -291,11 +335,11 @@ Exemplo de payload:
 }
 ```
 
-Falhas de webhook sao registradas em log e nao interrompem a criacao da notificacao de alerta. Para desabilitar no Docker Compose, ajuste `WEBHOOK_NOTIFICATIONS_ENABLED=false`.
+Falhas de webhook sao registradas em log e auditoria. Quando uma excecao chega ao processor, a mensagem e reagendada pela Outbox sem interromper a criacao da notificacao de alerta. Para desabilitar no Docker Compose, ajuste `WEBHOOK_NOTIFICATIONS_ENABLED=false`.
 
 ## Email Notifications
 
-Quando uma `AlertNotification` e criada, canais ativos do tipo `Email` enviam uma mensagem SMTP para o e-mail configurado em `Destination`.
+Quando uma `AlertNotification` e criada, canais ativos do tipo `Email` sao enfileirados na Outbox. O processor envia uma mensagem SMTP para o e-mail configurado em `Destination`.
 
 Configuracao:
 
@@ -328,7 +372,7 @@ EMAIL_NOTIFICATIONS_PORT=1025
 EMAIL_NOTIFICATIONS_USE_SSL=false
 ```
 
-O e-mail possui versao HTML e texto puro, com produto, preco alvo, preco encontrado, data do disparo e link do produto quando disponivel. Falhas no SMTP sao registradas em log e nao interrompem a criacao da notificacao de alerta.
+O e-mail possui versao HTML e texto puro, com produto, preco alvo, preco encontrado, data do disparo e link do produto quando disponivel. Falhas no SMTP sao registradas em log e auditoria, e nao interrompem a criacao da notificacao de alerta.
 
 ## Exportacoes CSV
 

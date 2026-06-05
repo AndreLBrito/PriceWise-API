@@ -139,6 +139,44 @@ Erros seguem o envelope padrao da API e incluem `traceId`, `correlationId` e `st
 
 Tambem e possivel enviar `X-Correlation-Id` na requisicao para rastrear logs, traces e respostas.
 
+## Auditoria e rastreabilidade
+
+A API registra acoes relevantes em `AuditLog`, sempre que aplicavel com `UserId`, acao, entidade, valores antigos e novos, IP, User-Agent, `CorrelationId` e data de criacao.
+
+Acoes auditadas:
+
+- Login e logout
+- Alteracao de senha
+- Revogacao de refresh tokens
+- Criacao, alteracao e remocao logica de cadastros principais
+- Alteracao de role
+- Ativacao e desativacao de usuarios
+- Execucao manual do PriceCheck
+- Envio de Webhook e e-mail, incluindo sucesso e falha
+
+Endpoints administrativos:
+
+- `GET /api/v1/admin/audit-logs`
+- `GET /api/v1/admin/audit-logs/{id}`
+
+Filtros disponiveis:
+
+- `userId`
+- `action`
+- `entityName`
+- `entityId`
+- `startDate`
+- `endDate`
+- `search`
+- `sortBy`
+- `sortDirection`
+- `page`
+- `pageSize`
+
+Os endpoints exigem policy `AdminOnly`. O `AuditLog` remove dados sensiveis antes de persistir `OldValues` e `NewValues`, incluindo campos como `Password`, `PasswordHash`, `RefreshToken` e `Token`.
+
+O header `X-Correlation-Id` pode ser enviado pelo cliente. Quando ausente, a API cria um identificador automaticamente. O mesmo valor e retornado na resposta, incluído nos logs do Serilog, nos erros padronizados e nos registros de auditoria.
+
 ## Dados de demonstracao
 
 Em ambiente de desenvolvimento, a API pode criar dados iniciais para demonstrar o Dashboard e os principais fluxos do projeto.

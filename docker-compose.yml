@@ -31,6 +31,13 @@ services:
       PriceCheck__Enabled: ${PRICE_CHECK_ENABLED:-true}
       PriceCheck__IntervalInMinutes: ${PRICE_CHECK_INTERVAL_IN_MINUTES:-30}
       PriceCheck__MaxProductsPerExecution: ${PRICE_CHECK_MAX_PRODUCTS_PER_EXECUTION:-50}
+      PriceProvider__MinimumBasePrice: ${PRICE_PROVIDER_MINIMUM_BASE_PRICE:-50}
+      PriceProvider__MaximumBasePrice: ${PRICE_PROVIDER_MAXIMUM_BASE_PRICE:-1500}
+      PriceProvider__VariationPercentage: ${PRICE_PROVIDER_VARIATION_PERCENTAGE:-0.03}
+      Outbox__Enabled: ${OUTBOX_ENABLED:-true}
+      Outbox__IntervalInSeconds: ${OUTBOX_INTERVAL_IN_SECONDS:-30}
+      Outbox__MaxRetries: ${OUTBOX_MAX_RETRIES:-5}
+      Outbox__BatchSize: ${OUTBOX_BATCH_SIZE:-20}
       RateLimiting__Enabled: ${RATE_LIMITING_ENABLED:-true}
       DataSeed__Enabled: ${DATA_SEED_ENABLED:-true}
       DataSeed__CreateDemoUser: ${DATA_SEED_CREATE_DEMO_USER:-true}

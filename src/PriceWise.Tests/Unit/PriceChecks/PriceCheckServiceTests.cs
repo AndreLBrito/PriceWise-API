@@ -27,14 +27,15 @@ public sealed class PriceCheckServiceTests
             "https://example.com/product/1",
             null,
             null));
-        var service = CreateService(repository, priceHistoryService);
+        var priceProvider = new FakePriceProvider(123.45m);
+        var service = CreateService(repository, priceHistoryService, priceProvider);
 
         var result = await service.RunAsync();
 
         result.IsSuccess.Should().BeTrue();
         result.Value.HistoriesCreated.Should().Be(1);
         priceHistoryService.CreatedRequests.Should().ContainSingle();
-        priceHistoryService.CreatedRequests[0].Request.Price.Should().BeGreaterThan(0);
+        priceHistoryService.CreatedRequests[0].Request.Price.Should().Be(123.45m);
         priceHistoryService.CreatedRequests[0].Request.Currency.Should().Be("BRL");
         repository.Executions.Should().ContainSingle();
     }
@@ -51,13 +52,13 @@ public sealed class PriceCheckServiceTests
             "https://example.com/product/1",
             100m,
             DateTime.UtcNow.AddHours(-2)));
-        var service = CreateService(repository, priceHistoryService);
+        var service = CreateService(repository, priceHistoryService, new FakePriceProvider(101.50m));
 
         var result = await service.RunAsync();
 
         result.IsSuccess.Should().BeTrue();
         priceHistoryService.CreatedRequests.Should().ContainSingle();
-        priceHistoryService.CreatedRequests[0].Request.Price.Should().BeInRange(97m, 103m);
+        priceHistoryService.CreatedRequests[0].Request.Price.Should().Be(101.50m);
     }
 
     [Fact]
@@ -79,6 +80,30 @@ public sealed class PriceCheckServiceTests
         result.IsSuccess.Should().BeTrue();
         result.Value.ProductsSkipped.Should().Be(1);
         priceHistoryService.CreatedRequests.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RunAsyncUsesPriceProvider()
+    {
+        var repository = new InMemoryPriceCheckRepository();
+        var priceHistoryService = new FakePriceHistoryService();
+        var provider = new FakePriceProvider(88.90m);
+        var candidate = new PriceCheckCandidate(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "https://example.com/product/1",
+            100m,
+            DateTime.UtcNow.AddHours(-2));
+        repository.Candidates.Add(candidate);
+        var service = CreateService(repository, priceHistoryService, provider);
+
+        var result = await service.RunAsync();
+
+        result.IsSuccess.Should().BeTrue();
+        provider.Candidates.Should().ContainSingle().Which.Should().Be(candidate);
+        priceHistoryService.CreatedRequests.Should().ContainSingle();
+        priceHistoryService.CreatedRequests[0].Request.Price.Should().Be(88.90m);
     }
 
     [Fact]
@@ -110,7 +135,8 @@ public sealed class PriceCheckServiceTests
 
     private static PriceCheckService CreateService(
         InMemoryPriceCheckRepository repository,
-        FakePriceHistoryService priceHistoryService)
+        FakePriceHistoryService priceHistoryService,
+        IPriceProvider? priceProvider = null)
     {
         var options = Options.Create(new PriceCheckOptions
         {
@@ -122,6 +148,7 @@ public sealed class PriceCheckServiceTests
         return new PriceCheckService(
             repository,
             priceHistoryService,
+            priceProvider ?? new FakePriceProvider(100m),
             options,
             NullLogger<PriceCheckService>.Instance,
             new NoOpApplicationTelemetry());
@@ -212,6 +239,27 @@ public sealed class PriceCheckServiceTests
             CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
+        }
+    }
+
+    private sealed class FakePriceProvider : IPriceProvider
+    {
+        private readonly decimal price;
+
+        public FakePriceProvider(decimal price)
+        {
+            this.price = price;
+        }
+
+        public List<PriceCheckCandidate> Candidates { get; } = [];
+
+        public Task<decimal> GetCurrentPriceAsync(
+            PriceCheckCandidate candidate,
+            CancellationToken cancellationToken = default)
+        {
+            Candidates.Add(candidate);
+
+            return Task.FromResult(price);
         }
     }
 }

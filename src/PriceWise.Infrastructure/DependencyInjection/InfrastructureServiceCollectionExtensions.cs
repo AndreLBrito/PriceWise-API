@@ -8,6 +8,7 @@ using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.Authentication;
 using PriceWise.Application.Exports;
+using PriceWise.Application.PriceChecks;
 using PriceWise.Infrastructure.Authentication;
 using PriceWise.Infrastructure.Database;
 using PriceWise.Infrastructure.DataSeeding;
@@ -59,10 +60,17 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<INotificationChannelRepository, NotificationChannelRepository>();
         services.AddScoped<IExportRepository, ExportRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<IOutboxRepository, OutboxRepository>();
         services.Configure<CsvExportOptions>(options =>
         {
             options.MaxRows = ReadInt(configuration, $"{CsvExportOptions.SectionName}:MaxRows", 10_000);
             options.DateFormat = configuration[$"{CsvExportOptions.SectionName}:DateFormat"] ?? "yyyy-MM-dd HH:mm:ss";
+        });
+        services.Configure<PriceProviderOptions>(options =>
+        {
+            options.MinimumBasePrice = ReadDecimal(configuration, $"{PriceProviderOptions.SectionName}:MinimumBasePrice", 50m);
+            options.MaximumBasePrice = ReadDecimal(configuration, $"{PriceProviderOptions.SectionName}:MaximumBasePrice", 1500m);
+            options.VariationPercentage = ReadDecimal(configuration, $"{PriceProviderOptions.SectionName}:VariationPercentage", 0.03m);
         });
         services.Configure<WebhookNotificationOptions>(options =>
         {
@@ -108,5 +116,10 @@ public static class InfrastructureServiceCollectionExtensions
     private static bool ReadBool(IConfiguration configuration, string key, bool defaultValue)
     {
         return bool.TryParse(configuration[key], out var value) ? value : defaultValue;
+    }
+
+    private static decimal ReadDecimal(IConfiguration configuration, string key, decimal defaultValue)
+    {
+        return decimal.TryParse(configuration[key], out var value) ? value : defaultValue;
     }
 }

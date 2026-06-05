@@ -17,4 +17,7 @@ public static class AuditActions
     public const string WebhookFailed = "WebhookFailed";
     public const string EmailSent = "EmailSent";
     public const string EmailFailed = "EmailFailed";
+    public const string OutboxProcessed = "OutboxProcessed";
+    public const string OutboxRetryScheduled = "OutboxRetryScheduled";
+    public const string OutboxFailed = "OutboxFailed";
 }

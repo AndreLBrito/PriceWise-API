@@ -18,6 +18,7 @@ public sealed class PriceCheckService : IPriceCheckService
 
     private readonly IPriceCheckRepository priceCheckRepository;
     private readonly IPriceHistoryService priceHistoryService;
+    private readonly IPriceProvider priceProvider;
     private readonly PriceCheckOptions options;
     private readonly ILogger<PriceCheckService> logger;
     private readonly IApplicationTelemetry telemetry;
@@ -25,12 +26,14 @@ public sealed class PriceCheckService : IPriceCheckService
     public PriceCheckService(
         IPriceCheckRepository priceCheckRepository,
         IPriceHistoryService priceHistoryService,
+        IPriceProvider priceProvider,
         IOptions<PriceCheckOptions> options,
         ILogger<PriceCheckService> logger,
         IApplicationTelemetry telemetry)
     {
         this.priceCheckRepository = priceCheckRepository;
         this.priceHistoryService = priceHistoryService;
+        this.priceProvider = priceProvider;
         this.options = options.Value;
         this.logger = logger;
         this.telemetry = telemetry;
@@ -66,7 +69,7 @@ public sealed class PriceCheckService : IPriceCheckService
                     continue;
                 }
 
-                var simulatedPrice = GeneratePrice(candidate.LatestPrice);
+                var simulatedPrice = await priceProvider.GetCurrentPriceAsync(candidate, cancellationToken);
                 var request = new CreatePriceHistoryRequest(
                     candidate.ProductId,
                     candidate.StoreId,
@@ -163,15 +166,6 @@ public sealed class PriceCheckService : IPriceCheckService
             lastExecution?.CompletedAt,
             lastExecution?.Status,
             lastExecution?.Message));
-    }
-
-    private static decimal GeneratePrice(decimal? latestPrice)
-    {
-        var basePrice = latestPrice is > 0 ? latestPrice.Value : Random.Shared.Next(50, 1500);
-        var variationPercentage = ((decimal)Random.Shared.NextDouble() * 0.06m) - 0.03m;
-        var price = decimal.Round(basePrice * (1 + variationPercentage), 2, MidpointRounding.AwayFromZero);
-
-        return Math.Max(price, 0.01m);
     }
 
     private static string BuildMessage(

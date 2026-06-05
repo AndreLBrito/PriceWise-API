@@ -58,6 +58,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IDashboardRepository, DashboardRepository>();
         services.AddScoped<INotificationChannelRepository, NotificationChannelRepository>();
         services.AddScoped<IExportRepository, ExportRepository>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.Configure<CsvExportOptions>(options =>
         {
             options.MaxRows = ReadInt(configuration, $"{CsvExportOptions.SectionName}:MaxRows", 10_000);

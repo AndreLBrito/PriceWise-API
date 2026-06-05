@@ -38,7 +38,31 @@ try
 
     app.UseSerilogRequestLogging();
     app.UseExceptionHandler();
+    app.UseStatusCodePages(async statusCodeContext =>
+    {
+        var httpContext = statusCodeContext.HttpContext;
+
+        if (httpContext.Response.HasStarted || httpContext.Response.ContentLength is not null)
+        {
+            return;
+        }
+
+        var (code, message) = httpContext.Response.StatusCode switch
+        {
+            StatusCodes.Status404NotFound => ("Resource.NotFound", "Recurso não encontrado."),
+            StatusCodes.Status401Unauthorized => ("Auth.Unauthorized", "Usuário não autenticado."),
+            StatusCodes.Status403Forbidden => ("Auth.Forbidden", "Você não possui permissão para acessar este recurso."),
+            _ => ("Http.Error", "Não foi possível concluir a requisição.")
+        };
+
+        httpContext.Response.ContentType = "application/json";
+        await httpContext.Response.WriteAsJsonAsync(PriceWise.Api.Common.ApiResponse<object>.Fail(
+            code,
+            message,
+            httpContext.Response.StatusCode));
+    });
     app.UseMiddleware<PriceWise.Api.Telemetry.CorrelationIdMiddleware>();
+    app.UseApiVersionPrefix();
     app.UseAuthentication();
     app.UseRateLimiter();
     app.UseAuthorization();

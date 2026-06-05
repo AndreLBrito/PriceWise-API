@@ -8,7 +8,7 @@ public static class ScalarExtensions
     {
         app.MapScalarApiReference(options =>
         {
-            options.Title = "PriceWise API";
+            options.Title = "PriceWise API v1";
             options.Theme = ScalarTheme.BluePlanet;
         });
 

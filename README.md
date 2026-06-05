@@ -71,6 +71,74 @@ As variaveis de ambiente ficam documentadas em `.env.example`. Para customizar c
 
 O container `pricewise-api` executa as migrations automaticamente durante a inicializacao. O `docker-compose.yml` aguarda PostgreSQL e Redis ficarem saudaveis antes de iniciar a API.
 
+## API Profissional
+
+A versao atual da API responde pelo prefixo `v1`:
+
+- Prefixo recomendado: `/api/v1`
+- Prefixo legado mantido por compatibilidade: `/api`
+
+Exemplo:
+
+```http
+GET /api/v1/products
+```
+
+Listagens principais retornam resposta paginada:
+
+```json
+{
+  "page": 1,
+  "pageSize": 20,
+  "totalItems": 120,
+  "totalPages": 6,
+  "items": [],
+  "hasNextPage": true,
+  "hasPreviousPage": false
+}
+```
+
+Parametros de listagem:
+
+- `page`
+- `pageSize`
+- `search`
+- `isActive`
+- `startDate`
+- `endDate`
+- `sortBy`
+- `sortDirection` com `asc` ou `desc`
+
+Endpoints com paginacao:
+
+- `GET /api/v1/products`
+- `GET /api/v1/stores`
+- `GET /api/v1/products/{productId}/price-histories`
+- `GET /api/v1/price-alerts`
+- `GET /api/v1/alert-notifications`
+- `GET /api/v1/notification-channels`
+- `GET /api/v1/admin/users`
+
+O `sortBy` e validado por whitelist em cada repository para evitar SQL injection. Valores desconhecidos usam uma ordenacao padrao segura.
+
+Erros seguem o envelope padrao da API e incluem `traceId`, `correlationId` e `statusCode` quando disponiveis:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "Auth.Forbidden",
+    "message": "Voce nao possui permissao para acessar este recurso.",
+    "traceId": "00-...",
+    "correlationId": "0f4...",
+    "statusCode": 403
+  }
+}
+```
+
+Tambem e possivel enviar `X-Correlation-Id` na requisicao para rastrear logs, traces e respostas.
+
 ## Dados de demonstracao
 
 Em ambiente de desenvolvimento, a API pode criar dados iniciais para demonstrar o Dashboard e os principais fluxos do projeto.

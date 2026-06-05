@@ -22,6 +22,7 @@ public static class EndpointRouteBuilderExtensions
         app.MapHealthEndpoints();
         app.MapAuthenticationEndpoints();
         app.MapAdminUserEndpoints();
+        app.MapAuditLogEndpoints();
         app.MapProductEndpoints();
         app.MapStoreEndpoints();
         app.MapPriceHistoryEndpoints();

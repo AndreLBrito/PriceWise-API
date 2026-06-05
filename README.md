@@ -5,7 +5,34 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-336791)
 ![Coverage](https://img.shields.io/badge/coverage-local_script-informational)
 
-PriceWise API e uma API REST para monitoramento de precos, historico de variacoes e alertas personalizados por usuario. O projeto foi criado como entrega de portfolio para demonstrar arquitetura em camadas, seguranca, observabilidade, resiliencia de integracoes, testes e ambiente local completo com Docker.
+PriceWise e uma API REST para monitorar produtos, registrar historico de precos e disparar alertas quando um preco desejado e atingido.
+
+O projeto foi criado como entrega de portfolio para demonstrar uma API profissional em .NET, com arquitetura em camadas, seguranca, observabilidade, resiliencia de integracoes, testes e ambiente local completo com Docker.
+
+Fluxo principal:
+
+```text
+Usuario cria produto -> cadastra loja -> registra precos -> cria alerta -> recebe notificacao
+```
+
+> O PriceWise ainda nao faz scraping real. A rotina automatica de consulta de precos usa um `MockPriceProvider`, que gera precos simulados e realistas para demonstrar a arquitetura, os jobs, o historico, os alertas, o Outbox Pattern e as notificacoes.
+
+## Primeiros passos rapidos
+
+```powershell
+docker compose up --build
+```
+
+Acesse a documentacao interativa:
+
+```http
+http://localhost:8080/scalar
+```
+
+Use os usuarios de demonstracao:
+
+- User: `demo@pricewise.com` / `Demo@123456`
+- Admin: `admin@pricewise.com` / `Admin@123456`
 
 ## Objetivos do projeto
 
@@ -80,6 +107,21 @@ flowchart LR
 - Admin Users, Audit Logs e Outbox administrativa.
 - Seed de dados para demonstracao.
 - Versionamento `/api/v1` com compatibilidade para `/api`.
+
+## Endpoints principais
+
+| Modulo | Exemplos |
+| --- | --- |
+| Health | `GET /health` |
+| Authentication | `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh-token` |
+| Products | `POST /api/v1/products`, `GET /api/v1/products`, `PUT /api/v1/products/{id}` |
+| Stores | `POST /api/v1/stores`, `GET /api/v1/stores`, `DELETE /api/v1/stores/{id}` |
+| PriceHistory | `POST /api/v1/price-histories`, `GET /api/v1/products/{productId}/price-histories/latest` |
+| PriceAlerts | `POST /api/v1/price-alerts`, `GET /api/v1/price-alerts` |
+| Dashboard | `GET /api/v1/dashboard/summary`, `GET /api/v1/dashboard/alerts/summary` |
+| Notifications | `GET /api/v1/alert-notifications`, `POST /api/v1/notification-channels` |
+| Exports | `GET /api/v1/exports/products.csv`, `GET /api/v1/exports/price-histories.csv` |
+| Admin | `GET /api/v1/admin/users`, `GET /api/v1/admin/audit-logs`, `GET /api/v1/admin/outbox` |
 
 ## Seguranca
 

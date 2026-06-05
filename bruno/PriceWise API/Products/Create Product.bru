@@ -1,0 +1,38 @@
+meta {
+  name: Create Product
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/products
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Notebook Gamer Demo",
+    "description": "Produto de demonstracao para monitoramento de precos.",
+    "brand": "PriceWise",
+    "category": "Eletronicos",
+    "productUrl": "https://example.com/products/notebook-demo-{{$timestamp}}",
+    "imageUrl": "https://example.com/images/notebook-demo.png"
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  const data = body && body.data ? body.data : body;
+  if (data && data.id) {
+    bru.setEnvVar("productId", data.id);
+  }
+}

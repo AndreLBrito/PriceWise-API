@@ -1,0 +1,27 @@
+meta {
+  name: Create Email Channel
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/notification-channels
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "type": "Email",
+    "name": "Email Demo",
+    "destination": "demo@pricewise.com"
+  }
+}

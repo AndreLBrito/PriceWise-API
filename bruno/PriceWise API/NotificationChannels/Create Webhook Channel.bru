@@ -1,0 +1,35 @@
+meta {
+  name: Create Webhook Channel
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/notification-channels
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "type": "Webhook",
+    "name": "Webhook Demo",
+    "destination": "https://webhook.site/example"
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  const data = body && body.data ? body.data : body;
+  if (data && data.id) {
+    bru.setEnvVar("notificationChannelId", data.id);
+  }
+}

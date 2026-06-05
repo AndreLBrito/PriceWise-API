@@ -1,0 +1,15 @@
+meta {
+  name: List Outbox
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/outbox?page=1&pageSize=20&sortBy=createdAt&sortDirection=desc
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

@@ -1,0 +1,29 @@
+meta {
+  name: Create Price History
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/price-histories
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "productId": "{{productId}}",
+    "storeId": "{{storeId}}",
+    "price": 1299.90,
+    "currency": "BRL",
+    "sourceUrl": "https://store.example.com/product"
+  }
+}

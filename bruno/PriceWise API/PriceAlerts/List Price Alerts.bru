@@ -1,0 +1,15 @@
+meta {
+  name: List Price Alerts
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/price-alerts?page=1&pageSize=20
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

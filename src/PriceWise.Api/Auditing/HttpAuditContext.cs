@@ -1,6 +1,6 @@
+using PriceWise.Api.Telemetry;
 using PriceWise.Application.Abstractions.Auditing;
 using PriceWise.Application.Auditing;
-using PriceWise.Api.Telemetry;
 
 namespace PriceWise.Api.Auditing;
 

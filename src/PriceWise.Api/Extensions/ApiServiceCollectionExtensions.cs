@@ -1,5 +1,5 @@
-using PriceWise.Api.ExceptionHandling;
 using PriceWise.Api.Auditing;
+using PriceWise.Api.ExceptionHandling;
 using PriceWise.Application.Abstractions.Auditing;
 
 namespace PriceWise.Api.Extensions;

@@ -1,5 +1,5 @@
-using PriceWise.Api.Authorization;
 using FluentValidation;
+using PriceWise.Api.Authorization;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
 using PriceWise.Api.RateLimiting;

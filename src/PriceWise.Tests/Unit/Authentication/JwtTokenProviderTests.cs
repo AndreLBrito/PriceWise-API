@@ -1,8 +1,8 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using FluentAssertions;
-using PriceWise.Infrastructure.Authentication;
 using PriceWise.Domain.Entities;
+using PriceWise.Infrastructure.Authentication;
 
 namespace PriceWise.Tests.Unit.Authentication;
 

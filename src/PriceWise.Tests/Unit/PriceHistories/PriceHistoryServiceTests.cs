@@ -1,8 +1,8 @@
+using FluentAssertions;
 using PriceWise.Application.Abstractions.Caching;
+using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.Abstractions.Telemetry;
 using PriceWise.Application.AlertNotifications;
-using FluentAssertions;
-using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.PriceHistories;
 using PriceWise.Application.PriceHistories.Dtos;
 using PriceWise.Domain.Entities;

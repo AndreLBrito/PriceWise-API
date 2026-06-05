@@ -1,10 +1,10 @@
+using Microsoft.Extensions.Options;
 using PriceWise.Application.Abstractions.Auth;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.Abstractions.Telemetry;
 using PriceWise.Application.Authentication.Dtos;
 using PriceWise.Application.Common;
 using PriceWise.Domain.Entities;
-using Microsoft.Extensions.Options;
 
 namespace PriceWise.Application.Authentication;
 

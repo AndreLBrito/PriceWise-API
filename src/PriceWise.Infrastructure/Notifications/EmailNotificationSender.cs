@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
-using PriceWise.Application.Auditing;
 using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.Abstractions.Telemetry;
+using PriceWise.Application.Auditing;
 using PriceWise.Domain.Enums;
 
 namespace PriceWise.Infrastructure.Notifications;

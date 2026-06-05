@@ -1,5 +1,5 @@
-using PriceWise.Application.Auditing.Dtos;
 using PriceWise.Application.Abstractions.Services;
+using PriceWise.Application.Auditing.Dtos;
 using PriceWise.Application.Common;
 
 namespace PriceWise.Application.Auditing;

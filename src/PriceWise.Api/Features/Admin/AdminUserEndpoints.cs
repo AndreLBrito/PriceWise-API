@@ -3,9 +3,9 @@ using PriceWise.Api.Authorization;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
 using PriceWise.Api.RateLimiting;
-using PriceWise.Application.Auditing;
 using PriceWise.Application.Admin;
 using PriceWise.Application.Admin.Dtos;
+using PriceWise.Application.Auditing;
 using PriceWise.Application.Common;
 
 namespace PriceWise.Api.Features.Admin;

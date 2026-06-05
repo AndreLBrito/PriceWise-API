@@ -1,5 +1,5 @@
-using PriceWise.Domain.Entities;
 using PriceWise.Application.Common;
+using PriceWise.Domain.Entities;
 
 namespace PriceWise.Application.Abstractions.Repositories;
 

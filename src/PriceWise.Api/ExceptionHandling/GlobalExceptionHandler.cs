@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Diagnostics;
 using FluentValidation;
+using Microsoft.AspNetCore.Diagnostics;
 using PriceWise.Api.Common;
 
 namespace PriceWise.Api.ExceptionHandling;

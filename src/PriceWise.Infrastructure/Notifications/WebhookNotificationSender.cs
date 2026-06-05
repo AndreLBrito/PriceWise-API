@@ -2,10 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using PriceWise.Application.Auditing;
 using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.Abstractions.Telemetry;
+using PriceWise.Application.Auditing;
 using PriceWise.Domain.Enums;
 
 namespace PriceWise.Infrastructure.Notifications;

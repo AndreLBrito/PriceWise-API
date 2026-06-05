@@ -3,6 +3,7 @@ using PriceWise.Api.Authorization;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
 using PriceWise.Api.RateLimiting;
+using PriceWise.Application.Auditing;
 using PriceWise.Application.Common;
 using PriceWise.Application.PriceAlerts;
 using PriceWise.Application.PriceAlerts.Dtos;
@@ -46,6 +47,7 @@ public static class PriceAlertEndpoints
         HttpContext httpContext,
         IValidator<CreatePriceAlertRequest> validator,
         IPriceAlertService priceAlertService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         if (!httpContext.User.TryGetUserId(out var userId))
@@ -62,9 +64,19 @@ public static class PriceAlertEndpoints
 
         var result = await priceAlertService.CreateAsync(userId, request, cancellationToken);
 
-        return result.IsSuccess
-            ? Results.Created($"/api/price-alerts/{result.Value.Id}", ApiResponse<PriceAlertResponse>.Ok(result.Value))
-            : Failure(result.Error);
+        if (result.IsFailure)
+        {
+            return Failure(result.Error);
+        }
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            userId,
+            AuditActions.Create,
+            "PriceAlert",
+            result.Value.Id,
+            NewValues: result.Value), cancellationToken);
+
+        return Results.Created($"/api/price-alerts/{result.Value.Id}", ApiResponse<PriceAlertResponse>.Ok(result.Value));
     }
 
     private static async Task<IResult> ListAsync(
@@ -107,6 +119,7 @@ public static class PriceAlertEndpoints
         HttpContext httpContext,
         IValidator<UpdatePriceAlertRequest> validator,
         IPriceAlertService priceAlertService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         if (!httpContext.User.TryGetUserId(out var userId))
@@ -121,17 +134,30 @@ public static class PriceAlertEndpoints
             return ValidationFailure(validationResult.Errors[0].ErrorMessage);
         }
 
+        var oldValues = await priceAlertService.GetByIdAsync(userId, id, cancellationToken);
         var result = await priceAlertService.UpdateAsync(userId, id, request, cancellationToken);
 
-        return result.IsSuccess
-            ? Results.Ok(ApiResponse<PriceAlertResponse>.Ok(result.Value))
-            : Failure(result.Error);
+        if (result.IsFailure)
+        {
+            return Failure(result.Error);
+        }
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            userId,
+            AuditActions.Update,
+            "PriceAlert",
+            id,
+            oldValues.IsSuccess ? oldValues.Value : null,
+            result.Value), cancellationToken);
+
+        return Results.Ok(ApiResponse<PriceAlertResponse>.Ok(result.Value));
     }
 
     private static async Task<IResult> DeleteAsync(
         Guid id,
         HttpContext httpContext,
         IPriceAlertService priceAlertService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         if (!httpContext.User.TryGetUserId(out var userId))
@@ -139,11 +165,23 @@ public static class PriceAlertEndpoints
             return Unauthorized();
         }
 
+        var oldValues = await priceAlertService.GetByIdAsync(userId, id, cancellationToken);
         var result = await priceAlertService.DeleteAsync(userId, id, cancellationToken);
 
-        return result.IsSuccess
-            ? Results.NoContent()
-            : Failure(result.Error);
+        if (result.IsFailure)
+        {
+            return Failure(result.Error);
+        }
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            userId,
+            AuditActions.Delete,
+            "PriceAlert",
+            id,
+            oldValues.IsSuccess ? oldValues.Value : null,
+            new { IsActive = false }), cancellationToken);
+
+        return Results.NoContent();
     }
 
     private static IResult ValidationFailure(string message)

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using PriceWise.Application.Auditing;
 using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.Abstractions.Telemetry;
@@ -15,19 +16,22 @@ public sealed class EmailNotificationSender : IEmailNotificationSender
     private readonly IOptions<EmailNotificationOptions> options;
     private readonly ILogger<EmailNotificationSender> logger;
     private readonly IApplicationTelemetry telemetry;
+    private readonly IAuditLogService auditLogService;
 
     public EmailNotificationSender(
         ISmtpEmailClient smtpEmailClient,
         IProductRepository productRepository,
         IOptions<EmailNotificationOptions> options,
         ILogger<EmailNotificationSender> logger,
-        IApplicationTelemetry telemetry)
+        IApplicationTelemetry telemetry,
+        IAuditLogService auditLogService)
     {
         this.smtpEmailClient = smtpEmailClient;
         this.productRepository = productRepository;
         this.options = options;
         this.logger = logger;
         this.telemetry = telemetry;
+        this.auditLogService = auditLogService;
     }
 
     public async Task SendAsync(NotificationDelivery delivery, CancellationToken cancellationToken = default)
@@ -65,6 +69,12 @@ public sealed class EmailNotificationSender : IEmailNotificationSender
                     payload.NotificationId,
                     delivery.Channel.Id,
                     delivery.Channel.Destination);
+                await RecordDeliveryAuditAsync(delivery, AuditActions.EmailSent, new
+                {
+                    payload.NotificationId,
+                    ChannelId = delivery.Channel.Id,
+                    Destination = delivery.Channel.Destination
+                }, cancellationToken);
                 return;
             }
             catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
@@ -79,6 +89,13 @@ public sealed class EmailNotificationSender : IEmailNotificationSender
 
                 if (attempt == emailOptions.MaxRetryAttempts)
                 {
+                    await RecordDeliveryAuditAsync(delivery, AuditActions.EmailFailed, new
+                    {
+                        payload.NotificationId,
+                        ChannelId = delivery.Channel.Id,
+                        Error = "Timeout",
+                        Attempt = attempt
+                    }, cancellationToken);
                     return;
                 }
             }
@@ -94,6 +111,13 @@ public sealed class EmailNotificationSender : IEmailNotificationSender
 
                 if (attempt == emailOptions.MaxRetryAttempts)
                 {
+                    await RecordDeliveryAuditAsync(delivery, AuditActions.EmailFailed, new
+                    {
+                        payload.NotificationId,
+                        ChannelId = delivery.Channel.Id,
+                        Error = exception.Message,
+                        Attempt = attempt
+                    }, cancellationToken);
                     return;
                 }
             }
@@ -143,6 +167,27 @@ public sealed class EmailNotificationSender : IEmailNotificationSender
 
         message.Body = bodyBuilder.ToMessageBody();
         return message;
+    }
+
+    private async Task RecordDeliveryAuditAsync(
+        NotificationDelivery delivery,
+        string action,
+        object values,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await auditLogService.RecordAsync(new AuditLogEntry(
+                delivery.AlertNotification.UserId,
+                action,
+                "NotificationChannel",
+                delivery.Channel.Id,
+                NewValues: values), cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Não foi possível registrar auditoria do envio de e-mail.");
+        }
     }
 
     private static EmailNotificationOptions Normalize(EmailNotificationOptions options)

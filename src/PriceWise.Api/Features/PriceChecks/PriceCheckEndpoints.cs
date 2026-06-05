@@ -2,6 +2,7 @@ using PriceWise.Api.Authorization;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
 using PriceWise.Api.RateLimiting;
+using PriceWise.Application.Auditing;
 using PriceWise.Application.Common;
 using PriceWise.Application.PriceChecks;
 using PriceWise.Application.PriceChecks.Dtos;
@@ -32,6 +33,7 @@ public static class PriceCheckEndpoints
     private static async Task<IResult> RunAsync(
         HttpContext httpContext,
         IPriceCheckService priceCheckService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         if (!httpContext.User.TryGetUserId(out _))
@@ -41,9 +43,19 @@ public static class PriceCheckEndpoints
 
         var result = await priceCheckService.RunAsync(cancellationToken);
 
-        return result.IsSuccess
-            ? Results.Ok(ApiResponse<PriceCheckRunResponse>.Ok(result.Value))
-            : Failure(result.Error);
+        if (result.IsFailure)
+        {
+            return Failure(result.Error);
+        }
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            httpContext.User.TryGetUserId(out var userId) ? userId : null,
+            AuditActions.ManualPriceCheck,
+            "PriceCheck",
+            null,
+            NewValues: result.Value), cancellationToken);
+
+        return Results.Ok(ApiResponse<PriceCheckRunResponse>.Ok(result.Value));
     }
 
     private static async Task<IResult> GetStatusAsync(

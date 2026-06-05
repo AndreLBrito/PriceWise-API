@@ -4,6 +4,7 @@ using PriceWise.Api.Authorization;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
 using PriceWise.Api.RateLimiting;
+using PriceWise.Application.Auditing;
 using PriceWise.Application.Authentication;
 using PriceWise.Application.Authentication.Dtos;
 using PriceWise.Application.Common;
@@ -61,6 +62,7 @@ public static class AuthenticationEndpoints
         RegisterRequest request,
         IValidator<RegisterRequest> validator,
         IAuthService authService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         var validationResult = await validator.ValidateAsync(request, cancellationToken);
@@ -72,15 +74,32 @@ public static class AuthenticationEndpoints
 
         var result = await authService.RegisterAsync(request, cancellationToken);
 
-        return result.IsSuccess
-            ? Results.Ok(ApiResponse<AuthResponse>.Ok(result.Value))
-            : Failure(result.Error);
+        if (result.IsFailure)
+        {
+            return Failure(result.Error);
+        }
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            result.Value.UserId,
+            AuditActions.Create,
+            "User",
+            result.Value.UserId,
+            NewValues: new
+            {
+                result.Value.UserId,
+                result.Value.Name,
+                result.Value.Email,
+                result.Value.Role
+            }), cancellationToken);
+
+        return Results.Ok(ApiResponse<AuthResponse>.Ok(result.Value));
     }
 
     private static async Task<IResult> LoginAsync(
         LoginRequest request,
         IValidator<LoginRequest> validator,
         IAuthService authService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         var validationResult = await validator.ValidateAsync(request, cancellationToken);
@@ -91,6 +110,18 @@ public static class AuthenticationEndpoints
         }
 
         var result = await authService.LoginAsync(request, cancellationToken);
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            result.IsSuccess ? result.Value.UserId : null,
+            AuditActions.Login,
+            "User",
+            result.IsSuccess ? result.Value.UserId : null,
+            NewValues: new
+            {
+                request.Email,
+                Status = result.IsSuccess ? "Success" : "Failed",
+                ErrorCode = result.IsFailure ? result.Error.Code : null
+            }), cancellationToken);
 
         return result.IsSuccess
             ? Results.Ok(ApiResponse<AuthResponse>.Ok(result.Value))
@@ -121,6 +152,7 @@ public static class AuthenticationEndpoints
         LogoutRequest request,
         IValidator<LogoutRequest> validator,
         IAuthService authService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         var validationResult = await validator.ValidateAsync(request, cancellationToken);
@@ -131,6 +163,13 @@ public static class AuthenticationEndpoints
         }
 
         var result = await authService.LogoutAsync(request, cancellationToken);
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            null,
+            AuditActions.Logout,
+            "RefreshToken",
+            null,
+            NewValues: new { Status = result.IsSuccess ? "Success" : "Failed" }), cancellationToken);
 
         return result.IsSuccess
             ? Results.Ok(ApiResponse<object>.Ok(new { }))
@@ -159,6 +198,7 @@ public static class AuthenticationEndpoints
         ChangePasswordRequest request,
         IValidator<ChangePasswordRequest> validator,
         IAuthService authService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         if (!httpContext.User.TryGetUserId(out var userId))
@@ -175,6 +215,16 @@ public static class AuthenticationEndpoints
 
         var result = await authService.ChangePasswordAsync(userId, request, cancellationToken);
 
+        if (result.IsSuccess)
+        {
+            await auditLogService.RecordAsync(new AuditLogEntry(
+                userId,
+                AuditActions.ChangePassword,
+                "User",
+                userId,
+                NewValues: new { Status = "Success" }), cancellationToken);
+        }
+
         return result.IsSuccess
             ? Results.Ok(ApiResponse<object>.Ok(new { Message = "Senha alterada com sucesso." }))
             : Failure(result.Error);
@@ -183,6 +233,7 @@ public static class AuthenticationEndpoints
     private static async Task<IResult> RevokeRefreshTokensAsync(
         HttpContext httpContext,
         IAuthService authService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         if (!httpContext.User.TryGetUserId(out var userId))
@@ -191,6 +242,16 @@ public static class AuthenticationEndpoints
         }
 
         var result = await authService.RevokeRefreshTokensAsync(userId, cancellationToken);
+
+        if (result.IsSuccess)
+        {
+            await auditLogService.RecordAsync(new AuditLogEntry(
+                userId,
+                AuditActions.RevokeRefreshTokens,
+                "User",
+                userId,
+                NewValues: new { Status = "Success" }), cancellationToken);
+        }
 
         return result.IsSuccess
             ? Results.Ok(ApiResponse<object>.Ok(new { Message = "Refresh tokens revogados com sucesso." }))

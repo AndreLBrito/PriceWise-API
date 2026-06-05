@@ -3,6 +3,7 @@ using FluentValidation;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
 using PriceWise.Api.RateLimiting;
+using PriceWise.Application.Auditing;
 using PriceWise.Application.Common;
 using PriceWise.Application.NotificationChannels;
 using PriceWise.Application.NotificationChannels.Dtos;
@@ -46,6 +47,7 @@ public static class NotificationChannelEndpoints
         HttpContext httpContext,
         IValidator<CreateNotificationChannelRequest> validator,
         INotificationChannelService notificationChannelService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         if (!httpContext.User.TryGetUserId(out var userId))
@@ -62,11 +64,21 @@ public static class NotificationChannelEndpoints
 
         var result = await notificationChannelService.CreateAsync(userId, request, cancellationToken);
 
-        return result.IsSuccess
-            ? Results.Created(
-                $"/api/notification-channels/{result.Value.Id}",
-                ApiResponse<NotificationChannelResponse>.Ok(result.Value))
-            : Failure(result.Error);
+        if (result.IsFailure)
+        {
+            return Failure(result.Error);
+        }
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            userId,
+            AuditActions.Create,
+            "NotificationChannel",
+            result.Value.Id,
+            NewValues: result.Value), cancellationToken);
+
+        return Results.Created(
+            $"/api/notification-channels/{result.Value.Id}",
+            ApiResponse<NotificationChannelResponse>.Ok(result.Value));
     }
 
     private static async Task<IResult> ListAsync(
@@ -109,6 +121,7 @@ public static class NotificationChannelEndpoints
         HttpContext httpContext,
         IValidator<UpdateNotificationChannelRequest> validator,
         INotificationChannelService notificationChannelService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         if (!httpContext.User.TryGetUserId(out var userId))
@@ -123,17 +136,30 @@ public static class NotificationChannelEndpoints
             return ValidationFailure(validationResult.Errors[0].ErrorMessage);
         }
 
+        var oldValues = await notificationChannelService.GetByIdAsync(userId, id, cancellationToken);
         var result = await notificationChannelService.UpdateAsync(userId, id, request, cancellationToken);
 
-        return result.IsSuccess
-            ? Results.Ok(ApiResponse<NotificationChannelResponse>.Ok(result.Value))
-            : Failure(result.Error);
+        if (result.IsFailure)
+        {
+            return Failure(result.Error);
+        }
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            userId,
+            AuditActions.Update,
+            "NotificationChannel",
+            id,
+            oldValues.IsSuccess ? oldValues.Value : null,
+            result.Value), cancellationToken);
+
+        return Results.Ok(ApiResponse<NotificationChannelResponse>.Ok(result.Value));
     }
 
     private static async Task<IResult> DeleteAsync(
         Guid id,
         HttpContext httpContext,
         INotificationChannelService notificationChannelService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         if (!httpContext.User.TryGetUserId(out var userId))
@@ -141,11 +167,23 @@ public static class NotificationChannelEndpoints
             return Unauthorized();
         }
 
+        var oldValues = await notificationChannelService.GetByIdAsync(userId, id, cancellationToken);
         var result = await notificationChannelService.DeleteAsync(userId, id, cancellationToken);
 
-        return result.IsSuccess
-            ? Results.NoContent()
-            : Failure(result.Error);
+        if (result.IsFailure)
+        {
+            return Failure(result.Error);
+        }
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            userId,
+            AuditActions.Delete,
+            "NotificationChannel",
+            id,
+            oldValues.IsSuccess ? oldValues.Value : null,
+            new { IsActive = false }), cancellationToken);
+
+        return Results.NoContent();
     }
 
     private static IResult ValidationFailure(string message)

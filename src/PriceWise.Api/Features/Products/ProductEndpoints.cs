@@ -3,6 +3,7 @@ using PriceWise.Api.Authorization;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
 using PriceWise.Api.RateLimiting;
+using PriceWise.Application.Auditing;
 using PriceWise.Application.Common;
 using PriceWise.Application.Products;
 using PriceWise.Application.Products.Dtos;
@@ -46,6 +47,7 @@ public static class ProductEndpoints
         HttpContext httpContext,
         IValidator<CreateProductRequest> validator,
         IProductService productService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         if (!httpContext.User.TryGetUserId(out var userId))
@@ -62,9 +64,19 @@ public static class ProductEndpoints
 
         var result = await productService.CreateAsync(userId, request, cancellationToken);
 
-        return result.IsSuccess
-            ? Results.Created($"/api/products/{result.Value.Id}", ApiResponse<ProductResponse>.Ok(result.Value))
-            : Failure(result.Error);
+        if (result.IsFailure)
+        {
+            return Failure(result.Error);
+        }
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            userId,
+            AuditActions.Create,
+            "Product",
+            result.Value.Id,
+            NewValues: result.Value), cancellationToken);
+
+        return Results.Created($"/api/products/{result.Value.Id}", ApiResponse<ProductResponse>.Ok(result.Value));
     }
 
     private static async Task<IResult> ListAsync(
@@ -107,6 +119,7 @@ public static class ProductEndpoints
         HttpContext httpContext,
         IValidator<UpdateProductRequest> validator,
         IProductService productService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         if (!httpContext.User.TryGetUserId(out var userId))
@@ -121,17 +134,30 @@ public static class ProductEndpoints
             return ValidationFailure(validationResult.Errors[0].ErrorMessage);
         }
 
+        var oldValues = await productService.GetByIdAsync(userId, id, cancellationToken);
         var result = await productService.UpdateAsync(userId, id, request, cancellationToken);
 
-        return result.IsSuccess
-            ? Results.Ok(ApiResponse<ProductResponse>.Ok(result.Value))
-            : Failure(result.Error);
+        if (result.IsFailure)
+        {
+            return Failure(result.Error);
+        }
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            userId,
+            AuditActions.Update,
+            "Product",
+            id,
+            oldValues.IsSuccess ? oldValues.Value : null,
+            result.Value), cancellationToken);
+
+        return Results.Ok(ApiResponse<ProductResponse>.Ok(result.Value));
     }
 
     private static async Task<IResult> DeleteAsync(
         Guid id,
         HttpContext httpContext,
         IProductService productService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         if (!httpContext.User.TryGetUserId(out var userId))
@@ -139,11 +165,23 @@ public static class ProductEndpoints
             return Unauthorized();
         }
 
+        var oldValues = await productService.GetByIdAsync(userId, id, cancellationToken);
         var result = await productService.DeleteAsync(userId, id, cancellationToken);
 
-        return result.IsSuccess
-            ? Results.NoContent()
-            : Failure(result.Error);
+        if (result.IsFailure)
+        {
+            return Failure(result.Error);
+        }
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            userId,
+            AuditActions.Delete,
+            "Product",
+            id,
+            oldValues.IsSuccess ? oldValues.Value : null,
+            new { IsActive = false }), cancellationToken);
+
+        return Results.NoContent();
     }
 
     private static IResult ValidationFailure(string message)

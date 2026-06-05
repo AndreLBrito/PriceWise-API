@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using PriceWise.Application.Auditing;
 using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.Abstractions.Telemetry;
@@ -16,19 +17,22 @@ public sealed class WebhookNotificationSender : IWebhookNotificationSender
     private readonly IOptions<WebhookNotificationOptions> options;
     private readonly ILogger<WebhookNotificationSender> logger;
     private readonly IApplicationTelemetry telemetry;
+    private readonly IAuditLogService auditLogService;
 
     public WebhookNotificationSender(
         HttpClient httpClient,
         IProductRepository productRepository,
         IOptions<WebhookNotificationOptions> options,
         ILogger<WebhookNotificationSender> logger,
-        IApplicationTelemetry telemetry)
+        IApplicationTelemetry telemetry,
+        IAuditLogService auditLogService)
     {
         this.httpClient = httpClient;
         this.productRepository = productRepository;
         this.options = options;
         this.logger = logger;
         this.telemetry = telemetry;
+        this.auditLogService = auditLogService;
     }
 
     public async Task SendAsync(NotificationDelivery delivery, CancellationToken cancellationToken = default)
@@ -74,6 +78,12 @@ public sealed class WebhookNotificationSender : IWebhookNotificationSender
                         payload.NotificationId,
                         delivery.Channel.Id,
                         (int)response.StatusCode);
+                    await RecordDeliveryAuditAsync(delivery, AuditActions.WebhookSent, new
+                    {
+                        payload.NotificationId,
+                        ChannelId = delivery.Channel.Id,
+                        StatusCode = (int)response.StatusCode
+                    }, cancellationToken);
                     return;
                 }
 
@@ -85,6 +95,13 @@ public sealed class WebhookNotificationSender : IWebhookNotificationSender
                         delivery.Channel.Id,
                         (int)response.StatusCode,
                         attempt);
+                    await RecordDeliveryAuditAsync(delivery, AuditActions.WebhookFailed, new
+                    {
+                        payload.NotificationId,
+                        ChannelId = delivery.Channel.Id,
+                        StatusCode = (int)response.StatusCode,
+                        Attempt = attempt
+                    }, cancellationToken);
                     return;
                 }
             }
@@ -100,6 +117,13 @@ public sealed class WebhookNotificationSender : IWebhookNotificationSender
 
                 if (attempt == webhookOptions.MaxRetryAttempts)
                 {
+                    await RecordDeliveryAuditAsync(delivery, AuditActions.WebhookFailed, new
+                    {
+                        payload.NotificationId,
+                        ChannelId = delivery.Channel.Id,
+                        Error = "Timeout",
+                        Attempt = attempt
+                    }, cancellationToken);
                     return;
                 }
             }
@@ -115,6 +139,13 @@ public sealed class WebhookNotificationSender : IWebhookNotificationSender
 
                 if (attempt == webhookOptions.MaxRetryAttempts)
                 {
+                    await RecordDeliveryAuditAsync(delivery, AuditActions.WebhookFailed, new
+                    {
+                        payload.NotificationId,
+                        ChannelId = delivery.Channel.Id,
+                        Error = exception.Message,
+                        Attempt = attempt
+                    }, cancellationToken);
                     return;
                 }
             }
@@ -150,6 +181,27 @@ public sealed class WebhookNotificationSender : IWebhookNotificationSender
         return statusCode == HttpStatusCode.RequestTimeout
             || statusCode == HttpStatusCode.TooManyRequests
             || (int)statusCode >= 500;
+    }
+
+    private async Task RecordDeliveryAuditAsync(
+        NotificationDelivery delivery,
+        string action,
+        object values,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await auditLogService.RecordAsync(new AuditLogEntry(
+                delivery.AlertNotification.UserId,
+                action,
+                "NotificationChannel",
+                delivery.Channel.Id,
+                NewValues: values), cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Não foi possível registrar auditoria do envio de Webhook.");
+        }
     }
 
     private static WebhookNotificationOptions Normalize(WebhookNotificationOptions options)

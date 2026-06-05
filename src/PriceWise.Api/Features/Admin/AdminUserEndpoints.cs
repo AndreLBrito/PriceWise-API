@@ -3,6 +3,7 @@ using PriceWise.Api.Authorization;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
 using PriceWise.Api.RateLimiting;
+using PriceWise.Application.Auditing;
 using PriceWise.Application.Admin;
 using PriceWise.Application.Admin.Dtos;
 using PriceWise.Application.Common;
@@ -73,6 +74,7 @@ public static class AdminUserEndpoints
         HttpContext httpContext,
         IValidator<UpdateUserRoleRequest> validator,
         IAdminUserService adminUserService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         if (!httpContext.User.TryGetUserId(out var currentAdminUserId))
@@ -89,33 +91,34 @@ public static class AdminUserEndpoints
                 validationResult.Errors[0].ErrorMessage));
         }
 
+        var oldValues = await adminUserService.GetByIdAsync(id, cancellationToken);
         var result = await adminUserService.UpdateRoleAsync(
             currentAdminUserId,
             id,
             request,
             cancellationToken);
 
-        return result.IsSuccess
-            ? Results.Ok(ApiResponse<AdminUserResponse>.Ok(result.Value))
-            : Failure(result.Error);
+        if (result.IsFailure)
+        {
+            return Failure(result.Error);
+        }
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            currentAdminUserId,
+            AuditActions.ChangeRole,
+            "User",
+            id,
+            oldValues.IsSuccess ? oldValues.Value : null,
+            result.Value), cancellationToken);
+
+        return Results.Ok(ApiResponse<AdminUserResponse>.Ok(result.Value));
     }
 
     private static async Task<IResult> ActivateAsync(
         Guid id,
-        IAdminUserService adminUserService,
-        CancellationToken cancellationToken)
-    {
-        var result = await adminUserService.ActivateAsync(id, cancellationToken);
-
-        return result.IsSuccess
-            ? Results.Ok(ApiResponse<AdminUserResponse>.Ok(result.Value))
-            : Failure(result.Error);
-    }
-
-    private static async Task<IResult> DeactivateAsync(
-        Guid id,
         HttpContext httpContext,
         IAdminUserService adminUserService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         if (!httpContext.User.TryGetUserId(out var currentAdminUserId))
@@ -123,19 +126,79 @@ public static class AdminUserEndpoints
             return Unauthorized();
         }
 
+        var oldValues = await adminUserService.GetByIdAsync(id, cancellationToken);
+        var result = await adminUserService.ActivateAsync(id, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return Failure(result.Error);
+        }
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            currentAdminUserId,
+            AuditActions.Activate,
+            "User",
+            id,
+            oldValues.IsSuccess ? oldValues.Value : null,
+            result.Value), cancellationToken);
+
+        return Results.Ok(ApiResponse<AdminUserResponse>.Ok(result.Value));
+    }
+
+    private static async Task<IResult> DeactivateAsync(
+        Guid id,
+        HttpContext httpContext,
+        IAdminUserService adminUserService,
+        IAuditLogService auditLogService,
+        CancellationToken cancellationToken)
+    {
+        if (!httpContext.User.TryGetUserId(out var currentAdminUserId))
+        {
+            return Unauthorized();
+        }
+
+        var oldValues = await adminUserService.GetByIdAsync(id, cancellationToken);
         var result = await adminUserService.DeactivateAsync(currentAdminUserId, id, cancellationToken);
 
-        return result.IsSuccess
-            ? Results.Ok(ApiResponse<AdminUserResponse>.Ok(result.Value))
-            : Failure(result.Error);
+        if (result.IsFailure)
+        {
+            return Failure(result.Error);
+        }
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            currentAdminUserId,
+            AuditActions.Deactivate,
+            "User",
+            id,
+            oldValues.IsSuccess ? oldValues.Value : null,
+            result.Value), cancellationToken);
+
+        return Results.Ok(ApiResponse<AdminUserResponse>.Ok(result.Value));
     }
 
     private static async Task<IResult> RevokeRefreshTokensAsync(
         Guid id,
+        HttpContext httpContext,
         IAdminUserService adminUserService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
+        if (!httpContext.User.TryGetUserId(out var currentAdminUserId))
+        {
+            return Unauthorized();
+        }
+
         var result = await adminUserService.RevokeRefreshTokensAsync(id, cancellationToken);
+
+        if (result.IsSuccess)
+        {
+            await auditLogService.RecordAsync(new AuditLogEntry(
+                currentAdminUserId,
+                AuditActions.RevokeRefreshTokens,
+                "User",
+                id,
+                NewValues: new { Status = "Success" }), cancellationToken);
+        }
 
         return result.IsSuccess
             ? Results.Ok(ApiResponse<object>.Ok(new { Message = "Refresh tokens revogados com sucesso." }))

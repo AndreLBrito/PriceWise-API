@@ -3,6 +3,7 @@ using PriceWise.Api.Authorization;
 using PriceWise.Api.Common;
 using PriceWise.Api.Extensions;
 using PriceWise.Api.RateLimiting;
+using PriceWise.Application.Auditing;
 using PriceWise.Application.Common;
 using PriceWise.Application.PriceHistories;
 using PriceWise.Application.PriceHistories.Dtos;
@@ -48,6 +49,7 @@ public static class PriceHistoryEndpoints
         HttpContext httpContext,
         IValidator<CreatePriceHistoryRequest> validator,
         IPriceHistoryService priceHistoryService,
+        IAuditLogService auditLogService,
         CancellationToken cancellationToken)
     {
         if (!httpContext.User.TryGetUserId(out var userId))
@@ -64,9 +66,21 @@ public static class PriceHistoryEndpoints
 
         var result = await priceHistoryService.CreateAsync(userId, request, cancellationToken);
 
-        return result.IsSuccess
-            ? Results.Created($"/api/products/{result.Value.ProductId}/price-histories", ApiResponse<PriceHistoryResponse>.Ok(result.Value))
-            : Failure(result.Error);
+        if (result.IsFailure)
+        {
+            return Failure(result.Error);
+        }
+
+        await auditLogService.RecordAsync(new AuditLogEntry(
+            userId,
+            AuditActions.Create,
+            "PriceHistory",
+            result.Value.Id,
+            NewValues: result.Value), cancellationToken);
+
+        return Results.Created(
+            $"/api/products/{result.Value.ProductId}/price-histories",
+            ApiResponse<PriceHistoryResponse>.Ok(result.Value));
     }
 
     private static async Task<IResult> ListByProductAsync(

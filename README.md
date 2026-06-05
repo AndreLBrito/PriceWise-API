@@ -401,11 +401,11 @@ O workflow `CI` roda em push e pull request para `main`:
 - Restore
 - Format check
 - Build em Release
-- Testes em Release
+- Testes unitarios em Release
 - Publicacao de resultados como artifact
 - Validacao do Docker Compose
 
-Os runners do GitHub Actions possuem Docker disponivel para os testes com Testcontainers.
+Os testes de integracao continuam versionados, mas devem ser executados localmente com Docker Desktop ativo. Essa decisao mantem o CI rapido e estavel para validacao de portfolio.
 
 ## Roadmap futuro
 

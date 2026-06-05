@@ -11,8 +11,9 @@ public interface IStoreService : IService
         CreateStoreRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<Result<IReadOnlyCollection<StoreResponse>>> ListAsync(
+    Task<Result<PagedResponse<StoreResponse>>> ListAsync(
         Guid userId,
+        ListRequest request,
         CancellationToken cancellationToken = default);
 
     Task<Result<StoreResponse>> GetByIdAsync(

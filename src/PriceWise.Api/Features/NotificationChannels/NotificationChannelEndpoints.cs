@@ -71,6 +71,7 @@ public static class NotificationChannelEndpoints
 
     private static async Task<IResult> ListAsync(
         HttpContext httpContext,
+        [AsParameters] ListRequest request,
         INotificationChannelService notificationChannelService,
         CancellationToken cancellationToken)
     {
@@ -79,9 +80,9 @@ public static class NotificationChannelEndpoints
             return Unauthorized();
         }
 
-        var result = await notificationChannelService.ListAsync(userId, cancellationToken);
+        var result = await notificationChannelService.ListAsync(userId, request, cancellationToken);
 
-        return Results.Ok(ApiResponse<IReadOnlyCollection<NotificationChannelResponse>>.Ok(result.Value));
+        return Results.Ok(ApiResponse<PagedResponse<NotificationChannelResponse>>.Ok(result.Value));
     }
 
     private static async Task<IResult> GetByIdAsync(

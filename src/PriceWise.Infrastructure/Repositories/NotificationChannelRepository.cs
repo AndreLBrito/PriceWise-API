@@ -1,6 +1,7 @@
 using Dapper;
 using PriceWise.Application.Abstractions.Data;
 using PriceWise.Application.Abstractions.Repositories;
+using PriceWise.Application.Common;
 using PriceWise.Domain.Entities;
 using PriceWise.Domain.Enums;
 
@@ -32,6 +33,58 @@ public sealed class NotificationChannelRepository : INotificationChannelReposito
             new CommandDefinition(sql, new { UserId = userId }, cancellationToken: cancellationToken));
 
         return rows.Select(row => row.ToNotificationChannel()).ToArray();
+    }
+
+    public async Task<PagedResponse<NotificationChannel>> ListByUserIdAsync(
+        Guid userId,
+        ListRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var sortColumn = GetSortColumn(request.SortBy);
+        var sortDirection = request.IsDescending ? "desc" : "asc";
+        var whereSql = """
+            where user_id = @UserId
+              and (@IsActive is null or is_active = @IsActive)
+              and (@StartDate is null or created_at_utc >= @StartDate)
+              and (@EndDate is null or created_at_utc <= @EndDate)
+              and (
+                  @Search is null
+                  or name ilike @Search
+                  or destination ilike @Search
+                  or type ilike @Search
+              )
+            """;
+        var countSql = $"select count(*) from notification_channels {whereSql}";
+        var listSql = $"""
+            select id, user_id as UserId, type, name, destination, is_active as IsActive,
+                   created_at_utc as CreatedAtUtc, updated_at_utc as UpdatedAtUtc
+            from notification_channels
+            {whereSql}
+            order by {sortColumn} {sortDirection}
+            limit @PageSize offset @Offset
+            """;
+        var parameters = new
+        {
+            UserId = userId,
+            IsActive = request.IsActive ?? true,
+            request.StartDate,
+            request.EndDate,
+            Search = string.IsNullOrWhiteSpace(request.Search) ? null : $"%{request.Search.Trim()}%",
+            PageSize = request.NormalizedPageSize,
+            request.Offset
+        };
+
+        using var connection = await connectionFactory.CreateConnectionAsync(cancellationToken);
+        var totalItems = await connection.ExecuteScalarAsync<int>(
+            new CommandDefinition(countSql, parameters, cancellationToken: cancellationToken));
+        var rows = await connection.QueryAsync<NotificationChannelRow>(
+            new CommandDefinition(listSql, parameters, cancellationToken: cancellationToken));
+
+        return PagedResponse<NotificationChannel>.Create(
+            rows.Select(row => row.ToNotificationChannel()).ToArray(),
+            request.NormalizedPage,
+            request.NormalizedPageSize,
+            totalItems);
     }
 
     public async Task<IReadOnlyCollection<NotificationChannel>> ListActiveByUserIdAsync(
@@ -205,5 +258,19 @@ public sealed class NotificationChannelRepository : INotificationChannelReposito
                 CreatedAtUtc,
                 UpdatedAtUtc);
         }
+    }
+
+    private static string GetSortColumn(string? sortBy)
+    {
+        return sortBy?.Trim().ToLowerInvariant() switch
+        {
+            "name" => "name",
+            "type" => "type",
+            "destination" => "destination",
+            "createdat" => "created_at_utc",
+            "updatedat" => "updated_at_utc",
+            "isactive" => "is_active",
+            _ => "name"
+        };
     }
 }

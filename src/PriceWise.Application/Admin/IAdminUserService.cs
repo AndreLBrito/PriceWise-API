@@ -6,7 +6,9 @@ namespace PriceWise.Application.Admin;
 
 public interface IAdminUserService : IService
 {
-    Task<Result<AdminUserListResponse>> ListAsync(int page, int pageSize, CancellationToken cancellationToken = default);
+    Task<Result<PagedResponse<AdminUserResponse>>> ListAsync(
+        ListRequest request,
+        CancellationToken cancellationToken = default);
 
     Task<Result<AdminUserResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 

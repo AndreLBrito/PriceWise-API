@@ -7,8 +7,6 @@ namespace PriceWise.Application.Admin;
 
 public sealed class AdminUserService : IAdminUserService
 {
-    private const int MaxPageSize = 100;
-
     private readonly IUserRepository userRepository;
     private readonly IRefreshTokenRepository refreshTokenRepository;
 
@@ -20,20 +18,20 @@ public sealed class AdminUserService : IAdminUserService
         this.refreshTokenRepository = refreshTokenRepository;
     }
 
-    public async Task<Result<AdminUserListResponse>> ListAsync(
-        int page,
-        int pageSize,
+    public async Task<Result<PagedResponse<AdminUserResponse>>> ListAsync(
+        ListRequest request,
         CancellationToken cancellationToken = default)
     {
-        var normalizedPage = Math.Max(page, 1);
-        var normalizedPageSize = Math.Clamp(pageSize, 1, MaxPageSize);
-        var users = await userRepository.ListAsync(normalizedPage, normalizedPageSize, cancellationToken);
+        var users = await userRepository.ListAsync(
+            request.NormalizedPage,
+            request.NormalizedPageSize,
+            cancellationToken);
         var totalItems = await userRepository.CountAsync(cancellationToken);
 
-        return Result<AdminUserListResponse>.Success(new AdminUserListResponse(
+        return Result<PagedResponse<AdminUserResponse>>.Success(PagedResponse<AdminUserResponse>.Create(
             users.Select(ToResponse).ToArray(),
-            normalizedPage,
-            normalizedPageSize,
+            request.NormalizedPage,
+            request.NormalizedPageSize,
             totalItems));
     }
 

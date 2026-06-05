@@ -48,14 +48,19 @@ public sealed class NotificationChannelService : INotificationChannelService
         return Result<NotificationChannelResponse>.Success(MapToResponse(notificationChannel));
     }
 
-    public async Task<Result<IReadOnlyCollection<NotificationChannelResponse>>> ListAsync(
+    public async Task<Result<PagedResponse<NotificationChannelResponse>>> ListAsync(
         Guid userId,
+        ListRequest request,
         CancellationToken cancellationToken = default)
     {
-        var channels = await notificationChannelRepository.ListByUserIdAsync(userId, cancellationToken);
-        var response = channels.Select(MapToResponse).ToArray();
+        var channels = await notificationChannelRepository.ListByUserIdAsync(userId, request, cancellationToken);
+        var response = PagedResponse<NotificationChannelResponse>.Create(
+            channels.Items.Select(MapToResponse).ToArray(),
+            channels.Page,
+            channels.PageSize,
+            channels.TotalItems);
 
-        return Result<IReadOnlyCollection<NotificationChannelResponse>>.Success(response);
+        return Result<PagedResponse<NotificationChannelResponse>>.Success(response);
     }
 
     public async Task<Result<NotificationChannelResponse>> GetByIdAsync(

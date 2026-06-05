@@ -15,6 +15,22 @@ public interface IAlertNotificationService : IService
         Guid userId,
         CancellationToken cancellationToken = default);
 
+    async Task<Result<PagedResponse<AlertNotificationResponse>>> ListAsync(
+        Guid userId,
+        ListRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await ListAsync(userId, cancellationToken);
+
+        return result.IsSuccess
+            ? Result<PagedResponse<AlertNotificationResponse>>.Success(PagedResponse<AlertNotificationResponse>.Create(
+                result.Value.Skip(request.Offset).Take(request.NormalizedPageSize).ToArray(),
+                request.NormalizedPage,
+                request.NormalizedPageSize,
+                result.Value.Count))
+            : Result<PagedResponse<AlertNotificationResponse>>.Failure(result.Error);
+    }
+
     Task<Result<AlertNotificationResponse>> GetByIdAsync(
         Guid userId,
         Guid notificationId,

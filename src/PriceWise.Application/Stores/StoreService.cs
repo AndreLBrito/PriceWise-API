@@ -47,15 +47,20 @@ public sealed class StoreService : IStoreService
         return Result<StoreResponse>.Success(MapToResponse(store));
     }
 
-    public async Task<Result<IReadOnlyCollection<StoreResponse>>> ListAsync(
+    public async Task<Result<PagedResponse<StoreResponse>>> ListAsync(
         Guid userId,
+        ListRequest request,
         CancellationToken cancellationToken = default)
     {
         using var activity = telemetry.StartActivity("StoreService.List");
-        var stores = await storeRepository.ListByUserIdAsync(userId, cancellationToken);
-        var response = stores.Select(MapToResponse).ToArray();
+        var stores = await storeRepository.ListByUserIdAsync(userId, request, cancellationToken);
+        var response = PagedResponse<StoreResponse>.Create(
+            stores.Items.Select(MapToResponse).ToArray(),
+            stores.Page,
+            stores.PageSize,
+            stores.TotalItems);
 
-        return Result<IReadOnlyCollection<StoreResponse>>.Success(response);
+        return Result<PagedResponse<StoreResponse>>.Success(response);
     }
 
     public async Task<Result<StoreResponse>> GetByIdAsync(

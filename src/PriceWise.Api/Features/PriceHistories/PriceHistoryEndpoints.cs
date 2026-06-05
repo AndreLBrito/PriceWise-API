@@ -72,6 +72,7 @@ public static class PriceHistoryEndpoints
     private static async Task<IResult> ListByProductAsync(
         Guid productId,
         HttpContext httpContext,
+        [AsParameters] ListRequest request,
         IPriceHistoryService priceHistoryService,
         CancellationToken cancellationToken)
     {
@@ -80,10 +81,10 @@ public static class PriceHistoryEndpoints
             return Unauthorized();
         }
 
-        var result = await priceHistoryService.ListByProductAsync(userId, productId, cancellationToken);
+        var result = await priceHistoryService.ListByProductAsync(userId, productId, request, cancellationToken);
 
         return result.IsSuccess
-            ? Results.Ok(ApiResponse<IReadOnlyCollection<PriceHistoryResponse>>.Ok(result.Value))
+            ? Results.Ok(ApiResponse<PagedResponse<PriceHistoryResponse>>.Ok(result.Value))
             : Failure(result.Error);
     }
 

@@ -73,9 +73,10 @@ public sealed class PriceHistoryService : IPriceHistoryService
         return Result<PriceHistoryResponse>.Success(MapToResponse(priceHistory));
     }
 
-    public async Task<Result<IReadOnlyCollection<PriceHistoryResponse>>> ListByProductAsync(
+    public async Task<Result<PagedResponse<PriceHistoryResponse>>> ListByProductAsync(
         Guid userId,
         Guid productId,
+        ListRequest request,
         CancellationToken cancellationToken = default)
     {
         using var activity = telemetry.StartActivity("PriceHistoryService.ListByProduct");
@@ -84,13 +85,29 @@ public sealed class PriceHistoryService : IPriceHistoryService
         if (product is null)
         {
             telemetry.RecordError(PriceHistoryErrors.ProductNotFound.Code);
-            return Result<IReadOnlyCollection<PriceHistoryResponse>>.Failure(PriceHistoryErrors.ProductNotFound);
+            return Result<PagedResponse<PriceHistoryResponse>>.Failure(PriceHistoryErrors.ProductNotFound);
         }
 
-        var histories = await priceHistoryRepository.ListByProductAsync(userId, productId, cancellationToken);
-        var response = histories.Select(MapToResponse).ToArray();
+        var histories = await priceHistoryRepository.ListByProductAsync(userId, productId, request, cancellationToken);
+        var response = PagedResponse<PriceHistoryResponse>.Create(
+            histories.Items.Select(MapToResponse).ToArray(),
+            histories.Page,
+            histories.PageSize,
+            histories.TotalItems);
 
-        return Result<IReadOnlyCollection<PriceHistoryResponse>>.Success(response);
+        return Result<PagedResponse<PriceHistoryResponse>>.Success(response);
+    }
+
+    public async Task<Result<IReadOnlyCollection<PriceHistoryResponse>>> ListByProductAsync(
+        Guid userId,
+        Guid productId,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await ListByProductAsync(userId, productId, new ListRequest(), cancellationToken);
+
+        return result.IsSuccess
+            ? Result<IReadOnlyCollection<PriceHistoryResponse>>.Success(result.Value.Items)
+            : Result<IReadOnlyCollection<PriceHistoryResponse>>.Failure(result.Error);
     }
 
     public async Task<Result<PriceHistoryResponse>> GetLatestAsync(

@@ -11,8 +11,9 @@ public interface IProductService : IService
         CreateProductRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<Result<IReadOnlyCollection<ProductResponse>>> ListAsync(
+    Task<Result<PagedResponse<ProductResponse>>> ListAsync(
         Guid userId,
+        ListRequest request,
         CancellationToken cancellationToken = default);
 
     Task<Result<ProductResponse>> GetByIdAsync(

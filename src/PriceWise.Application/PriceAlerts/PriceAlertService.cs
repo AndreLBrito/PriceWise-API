@@ -61,15 +61,20 @@ public sealed class PriceAlertService : IPriceAlertService
         return Result<PriceAlertResponse>.Success(MapToResponse(priceAlert));
     }
 
-    public async Task<Result<IReadOnlyCollection<PriceAlertResponse>>> ListAsync(
+    public async Task<Result<PagedResponse<PriceAlertResponse>>> ListAsync(
         Guid userId,
+        ListRequest request,
         CancellationToken cancellationToken = default)
     {
         using var activity = telemetry.StartActivity("PriceAlertService.List");
-        var priceAlerts = await priceAlertRepository.ListByUserIdAsync(userId, cancellationToken);
-        var response = priceAlerts.Select(MapToResponse).ToArray();
+        var priceAlerts = await priceAlertRepository.ListByUserIdAsync(userId, request, cancellationToken);
+        var response = PagedResponse<PriceAlertResponse>.Create(
+            priceAlerts.Items.Select(MapToResponse).ToArray(),
+            priceAlerts.Page,
+            priceAlerts.PageSize,
+            priceAlerts.TotalItems);
 
-        return Result<IReadOnlyCollection<PriceAlertResponse>>.Success(response);
+        return Result<PagedResponse<PriceAlertResponse>>.Success(response);
     }
 
     public async Task<Result<PriceAlertResponse>> GetByIdAsync(

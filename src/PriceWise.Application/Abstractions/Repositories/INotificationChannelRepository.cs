@@ -1,4 +1,5 @@
 using PriceWise.Domain.Entities;
+using PriceWise.Application.Common;
 using PriceWise.Domain.Enums;
 
 namespace PriceWise.Application.Abstractions.Repositories;
@@ -8,6 +9,20 @@ public interface INotificationChannelRepository : IRepository<NotificationChanne
     Task<IReadOnlyCollection<NotificationChannel>> ListByUserIdAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
+
+    async Task<PagedResponse<NotificationChannel>> ListByUserIdAsync(
+        Guid userId,
+        ListRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var items = await ListByUserIdAsync(userId, cancellationToken);
+
+        return PagedResponse<NotificationChannel>.Create(
+            items.Skip(request.Offset).Take(request.NormalizedPageSize).ToArray(),
+            request.NormalizedPage,
+            request.NormalizedPageSize,
+            items.Count);
+    }
 
     Task<IReadOnlyCollection<NotificationChannel>> ListActiveByUserIdAsync(
         Guid userId,

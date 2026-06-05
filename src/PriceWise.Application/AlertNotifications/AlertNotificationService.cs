@@ -78,15 +78,31 @@ public sealed class AlertNotificationService : IAlertNotificationService
         }
     }
 
+    public async Task<Result<PagedResponse<AlertNotificationResponse>>> ListAsync(
+        Guid userId,
+        ListRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        using var activity = telemetry.StartActivity("AlertNotificationService.List");
+        var notifications = await alertNotificationRepository.ListByUserIdAsync(userId, request, cancellationToken);
+        var response = PagedResponse<AlertNotificationResponse>.Create(
+            notifications.Items.Select(MapToResponse).ToArray(),
+            notifications.Page,
+            notifications.PageSize,
+            notifications.TotalItems);
+
+        return Result<PagedResponse<AlertNotificationResponse>>.Success(response);
+    }
+
     public async Task<Result<IReadOnlyCollection<AlertNotificationResponse>>> ListAsync(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        using var activity = telemetry.StartActivity("AlertNotificationService.List");
-        var notifications = await alertNotificationRepository.ListByUserIdAsync(userId, cancellationToken);
-        var response = notifications.Select(MapToResponse).ToArray();
+        var result = await ListAsync(userId, new ListRequest(), cancellationToken);
 
-        return Result<IReadOnlyCollection<AlertNotificationResponse>>.Success(response);
+        return result.IsSuccess
+            ? Result<IReadOnlyCollection<AlertNotificationResponse>>.Success(result.Value.Items)
+            : Result<IReadOnlyCollection<AlertNotificationResponse>>.Failure(result.Error);
     }
 
     public async Task<Result<AlertNotificationResponse>> GetByIdAsync(

@@ -30,6 +30,7 @@ public static class AlertNotificationEndpoints
 
     private static async Task<IResult> ListAsync(
         HttpContext httpContext,
+        [AsParameters] ListRequest request,
         IAlertNotificationService alertNotificationService,
         CancellationToken cancellationToken)
     {
@@ -38,9 +39,9 @@ public static class AlertNotificationEndpoints
             return Unauthorized();
         }
 
-        var result = await alertNotificationService.ListAsync(userId, cancellationToken);
+        var result = await alertNotificationService.ListAsync(userId, request, cancellationToken);
 
-        return Results.Ok(ApiResponse<IReadOnlyCollection<AlertNotificationResponse>>.Ok(result.Value));
+        return Results.Ok(ApiResponse<PagedResponse<AlertNotificationResponse>>.Ok(result.Value));
     }
 
     private static async Task<IResult> GetByIdAsync(

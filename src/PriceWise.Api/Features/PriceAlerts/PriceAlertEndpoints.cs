@@ -69,6 +69,7 @@ public static class PriceAlertEndpoints
 
     private static async Task<IResult> ListAsync(
         HttpContext httpContext,
+        [AsParameters] ListRequest request,
         IPriceAlertService priceAlertService,
         CancellationToken cancellationToken)
     {
@@ -77,9 +78,9 @@ public static class PriceAlertEndpoints
             return Unauthorized();
         }
 
-        var result = await priceAlertService.ListAsync(userId, cancellationToken);
+        var result = await priceAlertService.ListAsync(userId, request, cancellationToken);
 
-        return Results.Ok(ApiResponse<IReadOnlyCollection<PriceAlertResponse>>.Ok(result.Value));
+        return Results.Ok(ApiResponse<PagedResponse<PriceAlertResponse>>.Ok(result.Value));
     }
 
     private static async Task<IResult> GetByIdAsync(

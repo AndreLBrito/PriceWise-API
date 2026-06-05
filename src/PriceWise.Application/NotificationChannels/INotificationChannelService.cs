@@ -11,8 +11,9 @@ public interface INotificationChannelService : IService
         CreateNotificationChannelRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<Result<IReadOnlyCollection<NotificationChannelResponse>>> ListAsync(
+    Task<Result<PagedResponse<NotificationChannelResponse>>> ListAsync(
         Guid userId,
+        ListRequest request,
         CancellationToken cancellationToken = default);
 
     Task<Result<NotificationChannelResponse>> GetByIdAsync(

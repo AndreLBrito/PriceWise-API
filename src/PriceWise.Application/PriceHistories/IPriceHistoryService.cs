@@ -16,6 +16,23 @@ public interface IPriceHistoryService : IService
         Guid productId,
         CancellationToken cancellationToken = default);
 
+    async Task<Result<PagedResponse<PriceHistoryResponse>>> ListByProductAsync(
+        Guid userId,
+        Guid productId,
+        ListRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await ListByProductAsync(userId, productId, cancellationToken);
+
+        return result.IsSuccess
+            ? Result<PagedResponse<PriceHistoryResponse>>.Success(PagedResponse<PriceHistoryResponse>.Create(
+                result.Value.Skip(request.Offset).Take(request.NormalizedPageSize).ToArray(),
+                request.NormalizedPage,
+                request.NormalizedPageSize,
+                result.Value.Count))
+            : Result<PagedResponse<PriceHistoryResponse>>.Failure(result.Error);
+    }
+
     Task<Result<PriceHistoryResponse>> GetLatestAsync(
         Guid userId,
         Guid productId,

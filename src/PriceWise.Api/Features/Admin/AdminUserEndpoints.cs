@@ -46,14 +46,13 @@ public static class AdminUserEndpoints
     }
 
     private static async Task<IResult> ListAsync(
-        int page,
-        int pageSize,
+        [AsParameters] ListRequest request,
         IAdminUserService adminUserService,
         CancellationToken cancellationToken)
     {
-        var result = await adminUserService.ListAsync(page, pageSize, cancellationToken);
+        var result = await adminUserService.ListAsync(request, cancellationToken);
 
-        return Results.Ok(ApiResponse<AdminUserListResponse>.Ok(result.Value));
+        return Results.Ok(ApiResponse<PagedResponse<AdminUserResponse>>.Ok(result.Value));
     }
 
     private static async Task<IResult> GetByIdAsync(

@@ -1,4 +1,5 @@
 using PriceWise.Domain.Entities;
+using PriceWise.Application.Common;
 
 namespace PriceWise.Application.Abstractions.Repositories;
 
@@ -7,6 +8,20 @@ public interface IAlertNotificationRepository : IRepository<AlertNotification>
     Task<IReadOnlyCollection<AlertNotification>> ListByUserIdAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
+
+    async Task<PagedResponse<AlertNotification>> ListByUserIdAsync(
+        Guid userId,
+        ListRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var items = await ListByUserIdAsync(userId, cancellationToken);
+
+        return PagedResponse<AlertNotification>.Create(
+            items.Skip(request.Offset).Take(request.NormalizedPageSize).ToArray(),
+            request.NormalizedPage,
+            request.NormalizedPageSize,
+            items.Count);
+    }
 
     Task<AlertNotification?> GetByIdAsync(
         Guid id,

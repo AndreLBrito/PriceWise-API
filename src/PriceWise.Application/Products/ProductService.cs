@@ -57,17 +57,22 @@ public sealed class ProductService : IProductService
         return Result<ProductResponse>.Success(MapToResponse(product));
     }
 
-    public async Task<Result<IReadOnlyCollection<ProductResponse>>> ListAsync(
+    public async Task<Result<PagedResponse<ProductResponse>>> ListAsync(
         Guid userId,
+        ListRequest request,
         CancellationToken cancellationToken = default)
     {
         using var activity = telemetry.StartActivity("ProductService.List");
-        var products = await productRepository.ListByUserIdAsync(userId, cancellationToken);
-        var response = products
+        var products = await productRepository.ListByUserIdAsync(userId, request, cancellationToken);
+        var response = PagedResponse<ProductResponse>.Create(
+            products.Items
             .Select(MapToResponse)
-            .ToArray();
+            .ToArray(),
+            products.Page,
+            products.PageSize,
+            products.TotalItems);
 
-        return Result<IReadOnlyCollection<ProductResponse>>.Success(response);
+        return Result<PagedResponse<ProductResponse>>.Success(response);
     }
 
     public async Task<Result<ProductResponse>> GetByIdAsync(

@@ -69,6 +69,7 @@ public static class StoreEndpoints
 
     private static async Task<IResult> ListAsync(
         HttpContext httpContext,
+        [AsParameters] ListRequest request,
         IStoreService storeService,
         CancellationToken cancellationToken)
     {
@@ -77,9 +78,9 @@ public static class StoreEndpoints
             return Unauthorized();
         }
 
-        var result = await storeService.ListAsync(userId, cancellationToken);
+        var result = await storeService.ListAsync(userId, request, cancellationToken);
 
-        return Results.Ok(ApiResponse<IReadOnlyCollection<StoreResponse>>.Ok(result.Value));
+        return Results.Ok(ApiResponse<PagedResponse<StoreResponse>>.Ok(result.Value));
     }
 
     private static async Task<IResult> GetByIdAsync(

@@ -11,8 +11,9 @@ public interface IPriceAlertService : IService
         CreatePriceAlertRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<Result<IReadOnlyCollection<PriceAlertResponse>>> ListAsync(
+    Task<Result<PagedResponse<PriceAlertResponse>>> ListAsync(
         Guid userId,
+        ListRequest request,
         CancellationToken cancellationToken = default);
 
     Task<Result<PriceAlertResponse>> GetByIdAsync(

@@ -1,12 +1,11 @@
 using Microsoft.Extensions.Logging;
 using PriceWise.Application.Abstractions.Caching;
-using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.Abstractions.Telemetry;
 using PriceWise.Application.AlertNotifications.Dtos;
 using PriceWise.Application.Common;
+using PriceWise.Application.Outbox;
 using PriceWise.Domain.Entities;
-using PriceWise.Domain.Enums;
 
 namespace PriceWise.Application.AlertNotifications;
 
@@ -15,8 +14,7 @@ public sealed class AlertNotificationService : IAlertNotificationService
     private readonly IAlertNotificationRepository alertNotificationRepository;
     private readonly IPriceAlertRepository priceAlertRepository;
     private readonly INotificationChannelRepository notificationChannelRepository;
-    private readonly IWebhookNotificationSender webhookNotificationSender;
-    private readonly IEmailNotificationSender emailNotificationSender;
+    private readonly IOutboxService outboxService;
     private readonly ILogger<AlertNotificationService> logger;
     private readonly IDashboardCacheInvalidator dashboardCacheInvalidator;
     private readonly IApplicationTelemetry telemetry;
@@ -25,8 +23,7 @@ public sealed class AlertNotificationService : IAlertNotificationService
         IAlertNotificationRepository alertNotificationRepository,
         IPriceAlertRepository priceAlertRepository,
         INotificationChannelRepository notificationChannelRepository,
-        IWebhookNotificationSender webhookNotificationSender,
-        IEmailNotificationSender emailNotificationSender,
+        IOutboxService outboxService,
         ILogger<AlertNotificationService> logger,
         IDashboardCacheInvalidator dashboardCacheInvalidator,
         IApplicationTelemetry telemetry)
@@ -34,8 +31,7 @@ public sealed class AlertNotificationService : IAlertNotificationService
         this.alertNotificationRepository = alertNotificationRepository;
         this.priceAlertRepository = priceAlertRepository;
         this.notificationChannelRepository = notificationChannelRepository;
-        this.webhookNotificationSender = webhookNotificationSender;
-        this.emailNotificationSender = emailNotificationSender;
+        this.outboxService = outboxService;
         this.logger = logger;
         this.dashboardCacheInvalidator = dashboardCacheInvalidator;
         this.telemetry = telemetry;
@@ -74,7 +70,7 @@ public sealed class AlertNotificationService : IAlertNotificationService
             await alertNotificationRepository.AddAsync(notification, cancellationToken);
             await dashboardCacheInvalidator.InvalidateAlertSummaryAsync(notification.UserId, cancellationToken);
             telemetry.RecordAlertNotificationCreated();
-            await SendNotificationAsync(notification, cancellationToken);
+            await EnqueueNotificationsAsync(notification, cancellationToken);
         }
     }
 
@@ -139,7 +135,7 @@ public sealed class AlertNotificationService : IAlertNotificationService
             notification.UpdatedAtUtc);
     }
 
-    private async Task SendNotificationAsync(
+    private async Task EnqueueNotificationsAsync(
         AlertNotification notification,
         CancellationToken cancellationToken)
     {
@@ -151,18 +147,7 @@ public sealed class AlertNotificationService : IAlertNotificationService
         {
             try
             {
-                var delivery = new NotificationDelivery(notification, channel);
-
-                if (channel.Type == NotificationChannelType.Webhook)
-                {
-                    await webhookNotificationSender.SendAsync(delivery, cancellationToken);
-                    continue;
-                }
-
-                if (channel.Type == NotificationChannelType.Email)
-                {
-                    await emailNotificationSender.SendAsync(delivery, cancellationToken);
-                }
+                await outboxService.EnqueueNotificationAsync(notification, channel, cancellationToken);
             }
             catch (Exception exception)
             {

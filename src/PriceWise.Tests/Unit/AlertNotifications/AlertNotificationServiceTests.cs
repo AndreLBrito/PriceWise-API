@@ -1,10 +1,12 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using PriceWise.Application.Abstractions.Caching;
-using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.Abstractions.Telemetry;
 using PriceWise.Application.AlertNotifications;
+using PriceWise.Application.Common;
+using PriceWise.Application.Outbox;
+using PriceWise.Application.Outbox.Dtos;
 using PriceWise.Domain.Entities;
 using PriceWise.Domain.Enums;
 
@@ -62,7 +64,7 @@ public sealed class AlertNotificationServiceTests
     }
 
     [Fact]
-    public async Task CheckPriceAlertsAsyncSendsNotificationToActiveChannels()
+    public async Task CheckPriceAlertsAsyncEnqueuesNotificationToActiveChannels()
     {
         var userId = Guid.NewGuid();
         var productId = Guid.NewGuid();
@@ -80,34 +82,30 @@ public sealed class AlertNotificationServiceTests
                 NotificationChannelType.Email,
                 "Email",
                 "user@example.com"));
-        var webhookSender = new SpyWebhookNotificationSender();
-        var emailSender = new SpyEmailNotificationSender();
+        var outboxService = new SpyOutboxService();
         var service = CreateService(
             notificationRepository,
             new InMemoryPriceAlertRepository(priceAlert),
             channelRepository,
-            webhookSender,
-            emailSender);
+            outboxService);
 
         await service.CheckPriceAlertsAsync(priceHistory);
 
-        webhookSender.Deliveries.Should().ContainSingle();
-        emailSender.Deliveries.Should().ContainSingle();
+        outboxService.Messages.Should().HaveCount(2);
+        outboxService.Messages.Should().OnlyContain(message => message.Notification.PriceHistoryId == priceHistory.Id);
     }
 
     private static AlertNotificationService CreateService(
         IAlertNotificationRepository notificationRepository,
         IPriceAlertRepository priceAlertRepository,
         INotificationChannelRepository? notificationChannelRepository = null,
-        IWebhookNotificationSender? webhookNotificationSender = null,
-        IEmailNotificationSender? emailNotificationSender = null)
+        IOutboxService? outboxService = null)
     {
         return new AlertNotificationService(
             notificationRepository,
             priceAlertRepository,
             notificationChannelRepository ?? new InMemoryNotificationChannelRepository(),
-            webhookNotificationSender ?? new SpyWebhookNotificationSender(),
-            emailNotificationSender ?? new SpyEmailNotificationSender(),
+            outboxService ?? new SpyOutboxService(),
             NullLogger<AlertNotificationService>.Instance,
             new NoOpDashboardCacheInvalidator(),
             new NoOpApplicationTelemetry());
@@ -327,27 +325,44 @@ public sealed class AlertNotificationServiceTests
         }
     }
 
-    private sealed class SpyWebhookNotificationSender : IWebhookNotificationSender
+    private sealed class SpyOutboxService : IOutboxService
     {
-        public List<NotificationDelivery> Deliveries { get; } = [];
+        public List<(AlertNotification Notification, NotificationChannel Channel)> Messages { get; } = [];
 
-        public Task SendAsync(NotificationDelivery delivery, CancellationToken cancellationToken = default)
+        public Task EnqueueNotificationAsync(
+            AlertNotification notification,
+            NotificationChannel channel,
+            CancellationToken cancellationToken = default)
         {
-            Deliveries.Add(delivery);
+            Messages.Add((notification, channel));
 
             return Task.CompletedTask;
         }
-    }
 
-    private sealed class SpyEmailNotificationSender : IEmailNotificationSender
-    {
-        public List<NotificationDelivery> Deliveries { get; } = [];
-
-        public Task SendAsync(NotificationDelivery delivery, CancellationToken cancellationToken = default)
+        public Task<int> ProcessPendingAsync(CancellationToken cancellationToken = default)
         {
-            Deliveries.Add(delivery);
+            return Task.FromResult(0);
+        }
 
-            return Task.CompletedTask;
+        public Task<Result<OutboxMessageResponse>> RetryAsync(
+            Guid id,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<Result<PagedResponse<OutboxMessageResponse>>> ListAsync(
+            OutboxListRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<Result<OutboxMessageResponse>> GetByIdAsync(
+            Guid id,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
         }
     }
 }

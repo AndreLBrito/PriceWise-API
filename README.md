@@ -1,10 +1,21 @@
 # PriceWise API
 
 [![CI](https://github.com/AndreLBrito/PriceWise-API/actions/workflows/ci.yml/badge.svg)](https://github.com/AndreLBrito/PriceWise-API/actions/workflows/ci.yml)
+![.NET](https://img.shields.io/badge/.NET-10-512BD4)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-336791)
+![Coverage](https://img.shields.io/badge/coverage-local_script-informational)
 
-A PriceWise API e um projeto de portfolio para monitoramento de precos de produtos e historico de precos.
+PriceWise API e uma API REST para monitoramento de precos, historico de variacoes e alertas personalizados por usuario. O projeto foi criado como entrega de portfolio para demonstrar arquitetura em camadas, seguranca, observabilidade, resiliencia de integracoes, testes e ambiente local completo com Docker.
 
-## Stack
+## Objetivos do projeto
+
+- Demonstrar uma API profissional em .NET 10 usando Minimal API.
+- Modelar um dominio realista de monitoramento de precos sem depender de Entity Framework.
+- Aplicar padroes de arquitetura como Services, Repositories, Result Pattern e Outbox Pattern.
+- Entregar um ambiente reproduzivel com PostgreSQL, Redis, Jaeger, Mailpit e Docker Compose.
+- Mostrar maturidade tecnica com JWT, auditoria, rate limiting, OpenTelemetry, CI/CD e testes.
+
+## Stack utilizada
 
 - .NET 10
 - ASP.NET Core Minimal API
@@ -13,177 +24,157 @@ A PriceWise API e um projeto de portfolio para monitoramento de precos de produt
 - FluentMigrator
 - FluentValidation
 - Serilog
-- Redis
-- OpenTelemetry
 - Scalar
 - JWT Authentication
+- Redis Cache
+- Quartz.NET
+- OpenTelemetry
+- MailKit
 - xUnit
 - FluentAssertions
 - Testcontainers
+- GitHub Actions
+- Docker Compose
+- Bruno API Client
 
-## Architecture
+## Arquitetura
 
 ```text
 src/
-|-- PriceWise.Api
-|-- PriceWise.Application
-|-- PriceWise.Domain
-|-- PriceWise.Infrastructure
-`-- PriceWise.Tests
+|-- PriceWise.Api              Minimal API, endpoints, auth, rate limiting, OpenAPI/Scalar
+|-- PriceWise.Application      DTOs, validators, services, contracts, Result Pattern
+|-- PriceWise.Domain           Entities, enums e regras de dominio
+|-- PriceWise.Infrastructure   Dapper, PostgreSQL, migrations, Redis, Quartz, notificacoes
+`-- PriceWise.Tests            Testes unitarios e integracao com Testcontainers
 ```
 
-## Running locally
-
-Suba o ambiente completo com Docker Compose:
-
-```powershell
-docker compose up --build
+```mermaid
+flowchart LR
+    Client["Client / Scalar / Bruno"] --> Api["PriceWise.Api<br/>Minimal API"]
+    Api --> Application["PriceWise.Application<br/>Services + DTOs + Validators"]
+    Application --> Domain["PriceWise.Domain<br/>Entities + Enums"]
+    Application --> Repositories["Repository Interfaces"]
+    Repositories --> Infrastructure["PriceWise.Infrastructure<br/>Dapper + Integrations"]
+    Infrastructure --> Postgres[("PostgreSQL")]
+    Infrastructure --> Redis[("Redis")]
+    Infrastructure --> Quartz["Quartz.NET Jobs"]
+    Infrastructure --> Mailpit["SMTP / Mailpit"]
+    Infrastructure --> Webhooks["Webhook HTTP"]
+    Api --> OpenTelemetry["OpenTelemetry"]
+    OpenTelemetry --> Jaeger["Jaeger"]
 ```
 
-Ou use os scripts de inicializacao, que criam um `.env` local a partir do `.env.example` quando necessario:
+## Funcionalidades
 
-```powershell
-.\start.ps1
+- Authentication com register, login, refresh token, logout, troca de senha e revogacao de tokens.
+- Products para cadastro de produtos monitorados por usuario.
+- Stores para cadastro de lojas monitoradas por usuario.
+- PriceHistory para registrar precos por produto e loja.
+- PriceAlerts para definir preco alvo por produto.
+- AlertNotifications disparadas quando o preco encontrado atinge o alvo.
+- NotificationChannels com Webhook e Email.
+- Outbox Pattern para envio resiliente de notificacoes.
+- Dashboard com estatisticas agregadas.
+- Exportacao CSV de produtos, lojas, historico e notificacoes.
+- PriceCheck com Quartz.NET e `MockPriceProvider`.
+- Admin Users, Audit Logs e Outbox administrativa.
+- Seed de dados para demonstracao.
+- Versionamento `/api/v1` com compatibilidade para `/api`.
+
+## Seguranca
+
+- JWT Authentication.
+- Roles `User` e `Admin`.
+- Policies como `AdminOnly`, `AuthenticatedUser`, `PriceCheckManagement` e `TelemetryManagement`.
+- Password hashing.
+- Refresh tokens revogaveis.
+- Rate limiting por usuario autenticado ou IP.
+- Respostas padronizadas em portugues.
+- Tratamento global de excecoes.
+- CorrelationId via header `X-Correlation-Id`.
+- AuditLog com sanitizacao de campos sensiveis como `Password`, `PasswordHash`, `Token` e `RefreshToken`.
+
+### Fluxo de autenticacao
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as PriceWise.Api
+    participant Auth as AuthService
+    participant DB as PostgreSQL
+
+    Client->>API: POST /api/v1/auth/login
+    API->>Auth: Valida credenciais
+    Auth->>DB: Busca usuario e refresh tokens
+    DB-->>Auth: Usuario
+    Auth-->>API: AccessToken + RefreshToken
+    API-->>Client: 200 OK
+    Client->>API: Requests com Bearer token
+    API-->>Client: Recurso protegido
+    Client->>API: POST /api/v1/auth/refresh-token
+    API->>Auth: Valida refresh token
+    Auth->>DB: Rotaciona refresh token
+    API-->>Client: Novo AccessToken + RefreshToken
 ```
 
-```bash
-./start.sh
+## Observabilidade
+
+- Serilog para logs estruturados.
+- OpenTelemetry para traces e metricas.
+- Instrumentacao de ASP.NET Core, HttpClient, services e jobs.
+- Jaeger via OTLP no Docker Compose.
+- Health checks para API, PostgreSQL, Redis e telemetria.
+- Metricas customizadas para criacao de produtos, lojas, historicos, alertas, notificacoes e price checks.
+
+Endpoints:
+
+- `GET /health`
+- `GET /health/telemetry`
+- `GET /api/v1/telemetry/info`
+
+## Integracoes e processamento robusto
+
+O projeto usa Outbox Pattern para desacoplar a criacao de notificacoes do envio real por Webhook ou SMTP. Isso protege o fluxo principal contra falhas externas.
+
+### Fluxo de alerta de preco
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant History as PriceHistoryService
+    participant Alerts as AlertNotificationService
+    participant Outbox as OutboxService
+    participant DB as PostgreSQL
+    participant Job as OutboxProcessorJob
+    participant Sender as Webhook/Email Sender
+
+    Client->>History: POST /api/v1/price-histories
+    History->>DB: Salva PriceHistory
+    History->>Alerts: Verifica alertas ativos
+    Alerts->>DB: Cria AlertNotification
+    Alerts->>Outbox: Enfileira canais ativos
+    Outbox->>DB: Salva OutboxMessage
+    Client-->>History: 201 Created
+    Job->>DB: Busca mensagens Pending
+    Job->>Sender: Envia Webhook ou Email
+    Sender-->>Job: Sucesso ou falha
+    Job->>DB: Marca Processed ou agenda retry
 ```
 
-Health check:
+### Fluxo Outbox Pattern
 
-```http
-GET /health
+```mermaid
+stateDiagram-v2
+    [*] --> Pending: OutboxMessage criada
+    Pending --> Processing: Job seleciona lote
+    Processing --> Processed: Envio concluido
+    Processing --> Pending: Falha com retry disponivel
+    Processing --> Failed: MaxRetries atingido
+    Failed --> Pending: Retry manual admin
+    Processed --> [*]
 ```
 
-A documentacao do Scalar esta disponivel em ambiente de desenvolvimento em `/scalar`.
-
-Servicos locais:
-
-- API: `http://localhost:8080`
-- Scalar: `http://localhost:8080/scalar`
-- Jaeger: `http://localhost:16686`
-- Mailpit: `http://localhost:8025`
-- PostgreSQL: `localhost:5432`, database `pricewise`
-- Redis: `localhost:6379`
-
-As variaveis de ambiente ficam documentadas em `.env.example`. Para customizar credenciais, portas, JWT, Redis ou telemetria, crie um arquivo `.env` local.
-
-O container `pricewise-api` executa as migrations automaticamente durante a inicializacao. O `docker-compose.yml` aguarda PostgreSQL e Redis ficarem saudaveis antes de iniciar a API.
-
-## API Profissional
-
-A versao atual da API responde pelo prefixo `v1`:
-
-- Prefixo recomendado: `/api/v1`
-- Prefixo legado mantido por compatibilidade: `/api`
-
-Exemplo:
-
-```http
-GET /api/v1/products
-```
-
-Listagens principais retornam resposta paginada:
-
-```json
-{
-  "page": 1,
-  "pageSize": 20,
-  "totalItems": 120,
-  "totalPages": 6,
-  "items": [],
-  "hasNextPage": true,
-  "hasPreviousPage": false
-}
-```
-
-Parametros de listagem:
-
-- `page`
-- `pageSize`
-- `search`
-- `isActive`
-- `startDate`
-- `endDate`
-- `sortBy`
-- `sortDirection` com `asc` ou `desc`
-
-Endpoints com paginacao:
-
-- `GET /api/v1/products`
-- `GET /api/v1/stores`
-- `GET /api/v1/products/{productId}/price-histories`
-- `GET /api/v1/price-alerts`
-- `GET /api/v1/alert-notifications`
-- `GET /api/v1/notification-channels`
-- `GET /api/v1/admin/users`
-
-O `sortBy` e validado por whitelist em cada repository para evitar SQL injection. Valores desconhecidos usam uma ordenacao padrao segura.
-
-Erros seguem o envelope padrao da API e incluem `traceId`, `correlationId` e `statusCode` quando disponiveis:
-
-```json
-{
-  "success": false,
-  "data": null,
-  "error": {
-    "code": "Auth.Forbidden",
-    "message": "Voce nao possui permissao para acessar este recurso.",
-    "traceId": "00-...",
-    "correlationId": "0f4...",
-    "statusCode": 403
-  }
-}
-```
-
-Tambem e possivel enviar `X-Correlation-Id` na requisicao para rastrear logs, traces e respostas.
-
-## Auditoria e rastreabilidade
-
-A API registra acoes relevantes em `AuditLog`, sempre que aplicavel com `UserId`, acao, entidade, valores antigos e novos, IP, User-Agent, `CorrelationId` e data de criacao.
-
-Acoes auditadas:
-
-- Login e logout
-- Alteracao de senha
-- Revogacao de refresh tokens
-- Criacao, alteracao e remocao logica de cadastros principais
-- Alteracao de role
-- Ativacao e desativacao de usuarios
-- Execucao manual do PriceCheck
-- Envio de Webhook e e-mail, incluindo sucesso e falha
-
-Endpoints administrativos:
-
-- `GET /api/v1/admin/audit-logs`
-- `GET /api/v1/admin/audit-logs/{id}`
-
-Filtros disponiveis:
-
-- `userId`
-- `action`
-- `entityName`
-- `entityId`
-- `startDate`
-- `endDate`
-- `search`
-- `sortBy`
-- `sortDirection`
-- `page`
-- `pageSize`
-
-Os endpoints exigem policy `AdminOnly`. O `AuditLog` remove dados sensiveis antes de persistir `OldValues` e `NewValues`, incluindo campos como `Password`, `PasswordHash`, `RefreshToken` e `Token`.
-
-O header `X-Correlation-Id` pode ser enviado pelo cliente. Quando ausente, a API cria um identificador automaticamente. O mesmo valor e retornado na resposta, incluído nos logs do Serilog, nos erros padronizados e nos registros de auditoria.
-
-## Outbox, retries e PriceProvider
-
-As notificacoes de alerta usam Outbox Pattern. Quando uma `AlertNotification` e criada, a API cria uma `OutboxMessage` para cada canal ativo do usuario. O request principal nao chama Webhook ou SMTP diretamente.
-
-O `OutboxProcessorJob`, executado pelo Quartz.NET, processa mensagens pendentes em lote. Em caso de falha, a mensagem recebe nova tentativa com backoff exponencial simples. Quando o limite de tentativas e atingido, o status fica como `Failed`.
-
-Configuracao:
+Configuracao principal:
 
 ```json
 "Outbox": {
@@ -194,176 +185,126 @@ Configuracao:
 }
 ```
 
-Status possiveis:
+## Como executar localmente
 
-- `Pending`
-- `Processing`
-- `Processed`
-- `Failed`
+Requisitos:
 
-Endpoints administrativos:
+- .NET 10 SDK
+- Docker Desktop, para PostgreSQL/Redis e testes de integracao
 
-- `GET /api/v1/admin/outbox`
-- `GET /api/v1/admin/outbox/{id}`
-- `POST /api/v1/admin/outbox/{id}/retry`
+Suba dependencias com Docker:
 
-O retry manual so e permitido para mensagens com status `Failed` e exige policy `AdminOnly`.
-
-O PriceCheck usa a abstracao `IPriceProvider`. A implementacao atual e `MockPriceProvider`, que gera precos realistas com pequena variacao em relacao ao ultimo preco conhecido. Essa estrutura deixa o projeto pronto para trocar por uma integracao real futuramente, sem alterar o fluxo do `PriceCheckService`.
-
-Configuracao:
-
-```json
-"PriceProvider": {
-  "MinimumBasePrice": 50,
-  "MaximumBasePrice": 1500,
-  "VariationPercentage": 0.03
-}
+```powershell
+docker compose up -d postgres redis jaeger mailpit
 ```
 
-## Dados de demonstracao
+Execute a API:
 
-Em ambiente de desenvolvimento, a API pode criar dados iniciais para demonstrar o Dashboard e os principais fluxos do projeto.
-
-Usuario demo:
-
-- Email: `demo@pricewise.com`
-- Senha: `Demo@123456`
-
-A configuracao fica em `appsettings.json` ou nas variaveis do `.env`:
-
-```json
-"DataSeed": {
-  "Enabled": true,
-  "CreateDemoUser": true,
-  "DemoUserEmail": "demo@pricewise.com",
-  "DemoUserPassword": "Demo@123456",
-  "CreateDemoData": true
-}
+```powershell
+dotnet run --project src/PriceWise.Api/PriceWise.Api.csproj
 ```
 
-Para desabilitar no Docker Compose, ajuste:
+Health check:
 
-```env
-DATA_SEED_ENABLED=false
+```http
+GET http://localhost:8080/health
 ```
 
-O seed e idempotente, nao duplica dados em novas execucoes e nao roda em `Production`.
+## Como executar via Docker
 
-## Seguranca e autorizacao
+Copie o arquivo de ambiente:
 
-A API possui roles no JWT para separar usuarios comuns e operacoes administrativas.
-
-Roles disponiveis:
-
-- `User`: role padrao de usuarios criados pelo endpoint publico de register e do usuario demo.
-- `Admin`: role para operacoes administrativas e endpoints sensiveis.
-
-Policies principais:
-
-- `AuthenticatedUser`: endpoints autenticados comuns.
-- `AdminOnly`: endpoints administrativos.
-- `PriceCheckManagement`: gerenciamento manual do PriceCheck.
-- `TelemetryManagement`: informacoes de telemetria.
-- `SeedManagement`: execucao manual do seed de demonstracao.
-- `SystemManagement`: reservada para endpoints administrativos de sistema.
-
-Usuario admin de demonstracao:
-
-- Email: `admin@pricewise.com`
-- Senha: `Admin@123456`
-
-Configuracao:
-
-```json
-"AdminSeed": {
-  "Enabled": true,
-  "Email": "admin@pricewise.com",
-  "Password": "Admin@123456"
-},
-"AuthenticationSecurity": {
-  "MaxFailedLoginAttempts": 5,
-  "LockoutMinutes": 15
-}
+```powershell
+Copy-Item .env.example .env
 ```
 
-Endpoints de seguranca do usuario:
+Suba o ambiente completo:
 
-- `GET /api/auth/me`
-- `POST /api/auth/change-password`
-- `POST /api/auth/revoke-refresh-tokens`
-
-Endpoints administrativos:
-
-- `GET /api/admin/users?page=1&pageSize=20`
-- `GET /api/admin/users/{id}`
-- `PUT /api/admin/users/{id}/role`
-- `PUT /api/admin/users/{id}/activate`
-- `PUT /api/admin/users/{id}/deactivate`
-- `POST /api/admin/users/{id}/revoke-refresh-tokens`
-
-Para testar no Scalar, faca login com o usuario admin, copie o `AccessToken` e use o botao de autorizacao com `Bearer {token}`. Usuarios com role `User` recebem `403 Forbidden` nos endpoints administrativos.
-
-## Webhook Notifications
-
-Quando uma `AlertNotification` e criada, canais ativos do tipo `Webhook` sao enfileirados na Outbox. O processor envia um `POST` com `application/json` para a URL configurada em `Destination`.
-
-Configuracao:
-
-```json
-"WebhookNotifications": {
-  "Enabled": true,
-  "TimeoutInSeconds": 10,
-  "MaxRetryAttempts": 3
-}
+```powershell
+docker compose up --build
 ```
 
-Exemplo de payload:
+Ou use os scripts:
 
-```json
-{
-  "notificationId": "50000000-0000-0000-0000-000000000001",
-  "userId": "10000000-0000-0000-0000-000000000001",
-  "productId": "20000000-0000-0000-0000-000000000001",
-  "priceAlertId": "30000000-0000-0000-0000-000000000001",
-  "priceHistoryId": "40000000-0000-0000-0000-000000000001",
-  "productName": "Notebook Demo",
-  "targetPrice": 100.00,
-  "triggeredPrice": 89.90,
-  "triggeredAt": "2026-06-04T10:30:00Z",
-  "message": "O produto Notebook Demo atingiu o preco de R$ 89,90. Alvo configurado: R$ 100,00."
-}
+```powershell
+.\start.ps1
 ```
 
-Falhas de webhook sao registradas em log e auditoria. Quando uma excecao chega ao processor, a mensagem e reagendada pela Outbox sem interromper a criacao da notificacao de alerta. Para desabilitar no Docker Compose, ajuste `WEBHOOK_NOTIFICATIONS_ENABLED=false`.
-
-## Email Notifications
-
-Quando uma `AlertNotification` e criada, canais ativos do tipo `Email` sao enfileirados na Outbox. O processor envia uma mensagem SMTP para o e-mail configurado em `Destination`.
-
-Configuracao:
-
-```json
-"EmailNotifications": {
-  "Enabled": false,
-  "Host": "localhost",
-  "Port": 1025,
-  "UseSsl": false,
-  "UserName": "",
-  "Password": "",
-  "FromName": "PriceWise",
-  "FromEmail": "noreply@pricewise.local",
-  "TimeoutInSeconds": 10,
-  "MaxRetryAttempts": 3
-}
+```bash
+./start.sh
 ```
 
-No Docker Compose, o SMTP local usa Mailpit:
+Servicos locais:
+
+- API: `http://localhost:8080`
+- Scalar: `http://localhost:8080/scalar`
+- Jaeger: `http://localhost:16686`
+- Mailpit: `http://localhost:8025`
+- PostgreSQL: `localhost:5432`
+- Redis: `localhost:6379`
+
+As migrations rodam automaticamente na inicializacao da API. O seed de demonstracao roda em desenvolvimento quando `DataSeed:Enabled` esta habilitado.
+
+## Docker para producao
+
+O arquivo `docker-compose.prod.yml` contem uma configuracao base para producao, sem seed demo por padrao e com variaveis sensiveis exigidas via ambiente.
+
+Exemplo:
+
+```powershell
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+Variaveis obrigatorias para producao:
+
+- `POSTGRES_DB`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `JWT_SECRET`
+
+Recomendacoes:
+
+- Use um `JWT_SECRET` forte e exclusivo por ambiente.
+- Mantenha `DataSeed__Enabled=false` em producao.
+- Configure SMTP real apenas via variaveis de ambiente.
+- Publique a imagem em um registry quando houver alvo de deploy definido.
+
+## Scalar
+
+Scalar fica disponivel em ambiente `Development`:
+
+```http
+http://localhost:8080/scalar
+```
+
+Para testar endpoints protegidos, faca login e use o token no formato:
+
+```text
+Bearer {accessToken}
+```
+
+## Jaeger
+
+No Docker Compose, o OpenTelemetry exporta traces para o Jaeger via OTLP:
+
+```http
+http://localhost:16686
+```
+
+Servico esperado no Jaeger:
+
+```text
+PriceWise.Api
+```
+
+## Mailpit
+
+Mailpit captura e-mails em desenvolvimento:
 
 - SMTP: `mailpit:1025`
-- Interface web: `http://localhost:8025`
+- UI: `http://localhost:8025`
 
-Para testar localmente, habilite no `.env`:
+Para habilitar envio local:
 
 ```env
 EMAIL_NOTIFICATIONS_ENABLED=true
@@ -372,152 +313,153 @@ EMAIL_NOTIFICATIONS_PORT=1025
 EMAIL_NOTIFICATIONS_USE_SSL=false
 ```
 
-O e-mail possui versao HTML e texto puro, com produto, preco alvo, preco encontrado, data do disparo e link do produto quando disponivel. Falhas no SMTP sao registradas em log e auditoria, e nao interrompem a criacao da notificacao de alerta.
+## Colecao de API
 
-## Exportacoes CSV
+A colecao Bruno esta versionada em:
 
-A API permite exportar os dados principais em CSV, sempre filtrando pelo usuario autenticado.
-
-Endpoints:
-
-- `GET /api/exports/products.csv`
-- `GET /api/exports/stores.csv`
-- `GET /api/exports/price-histories.csv`
-- `GET /api/exports/alert-notifications.csv`
-
-Filtros opcionais:
-
-- `startDate`
-- `endDate`
-- `productId`, quando aplicavel
-- `storeId`, quando aplicavel
-
-Exemplo autenticado:
-
-```bash
-curl -H "Authorization: Bearer {token}" \
-  "http://localhost:8080/api/exports/price-histories.csv?productId={productId}&startDate=2026-06-01"
+```text
+bruno/PriceWise API
 ```
 
-Configuracao:
+Use o ambiente `Local`. O request `Authentication/Login` salva `accessToken` e `refreshToken` no ambiente quando possivel. Para endpoints administrativos, execute `Admin/Login Admin`.
 
-```json
-"CsvExport": {
-  "MaxRows": 10000,
-  "DateFormat": "yyyy-MM-dd HH:mm:ss"
-}
-```
+Usuarios de demonstracao:
 
-O retorno usa `text/csv`, UTF-8, cabecalho na primeira linha e limite maximo configuravel por `CsvExport:MaxRows`.
+- User: `demo@pricewise.com` / `Demo@123456`
+- Admin: `admin@pricewise.com` / `Admin@123456`
 
-## Observabilidade
+## Configuracao de ambiente
 
-A API possui observabilidade com OpenTelemetry para traces e metricas. A configuracao fica em `appsettings.json`:
+Arquivos de exemplo:
 
-```json
-"Telemetry": {
-  "Enabled": true,
-  "ServiceName": "PriceWise.Api",
-  "ServiceVersion": "1.0.0",
-  "Exporter": "Console",
-  "EnableMetrics": true,
-  "EnableTracing": true
-}
-```
+- `.env.example`
+- `src/PriceWise.Api/appsettings.Development.example.json`
 
-Use `Exporter: Console` para visualizar traces e metricas no terminal durante o desenvolvimento. Use `Exporter: OTLP` para enviar dados para um collector compativel com OpenTelemetry.
-No ambiente Docker Compose, o exporter OTLP aponta para o Jaeger em `http://jaeger:4317`.
+As principais secoes configuraveis sao:
 
-Endpoint de informacoes:
-
-```http
-GET /api/telemetry/info
-```
-
-Health check de telemetria:
-
-```http
-GET /health/telemetry
-```
-
-Metricas customizadas:
-
-- `products_created_total`
-- `stores_created_total`
-- `price_histories_created_total`
-- `price_alerts_created_total`
-- `alert_notifications_created_total`
-- `manual_price_checks_total`
-- `automatic_price_checks_total`
-
-Os traces usam o `ActivitySource` `PriceWise.Application` e cobrem os principais services da aplicacao, incluindo autenticacao, produtos, lojas, historico de precos, alertas, notificacoes e verificacao de precos.
-
-## Rate Limiting
-
-A API usa o rate limiting nativo do ASP.NET Core para proteger endpoints sensiveis. A configuracao fica em `appsettings.json`:
-
-```json
-"RateLimiting": {
-  "Enabled": true,
-  "LoginPermitLimit": 5,
-  "LoginWindowInMinutes": 1,
-  "RefreshTokenPermitLimit": 10,
-  "RefreshTokenWindowInMinutes": 1,
-  "GeneralPermitLimit": 100,
-  "GeneralWindowInMinutes": 1,
-  "PriceCheckPermitLimit": 3,
-  "PriceCheckWindowInMinutes": 5
-}
-```
-
-Politicas aplicadas:
-
-- Login e Register usam uma politica restritiva.
-- Refresh Token usa uma politica intermediaria.
-- `POST /api/price-check/run` usa uma politica restritiva.
-- Endpoints autenticados usam a politica geral.
-
-Quando o limite e excedido, a API retorna `HTTP 429` com resposta padronizada em portugues. Usuarios autenticados sao identificados pelo `UserId`; requisicoes anonimas sao particionadas por IP remoto.
-
-## CI/CD
-
-O projeto usa GitHub Actions no workflow `CI`, executado em pushes e pull requests para a branch `main`.
-
-O pipeline executa:
-
-- Checkout do codigo.
-- Instalacao do .NET 10 SDK.
-- `dotnet restore`.
-- Validacao de formatacao com `dotnet format --verify-no-changes`.
-- Build em `Release`.
-- Testes em `Release`.
-- Publicacao dos resultados de testes como artifact.
-- Validacao do `docker-compose.yml` com `docker compose config`.
-
-Os testes sao executados em runner Ubuntu do GitHub Actions, que possui Docker disponivel para cenarios com Testcontainers. Nenhum secret e necessario neste momento.
-
-TODO: adicionar publicacao de imagem Docker quando houver alvo de deploy definido.
+- `Database`
+- `Jwt`
+- `AuthenticationSecurity`
+- `AdminSeed`
+- `DataSeed`
+- `Redis`
+- `Telemetry`
+- `RateLimiting`
+- `PriceCheck`
+- `PriceProvider`
+- `Outbox`
+- `WebhookNotifications`
+- `EmailNotifications`
+- `CsvExport`
 
 ## Testes
 
-Execute a suite completa:
+Executar build:
+
+```powershell
+dotnet build PriceWise.slnx
+```
+
+Executar suite completa:
 
 ```powershell
 dotnet test PriceWise.slnx
 ```
 
-Os testes de integracao usam Testcontainers com PostgreSQL real. Para executa-los localmente, mantenha o Docker Desktop iniciado e disponivel para o terminal.
-
-Para executar apenas os testes unitarios:
+Executar apenas testes unitarios:
 
 ```powershell
-dotnet test PriceWise.slnx --filter FullyQualifiedName!~Integration
+dotnet test PriceWise.slnx --filter "FullyQualifiedName!~Integration"
 ```
 
-## Development
+Os testes de integracao usam Testcontainers com PostgreSQL real. Para executa-los localmente, mantenha o Docker Desktop iniciado.
 
-Compile a solution:
+## Cobertura de testes
+
+Gerar cobertura local no Windows:
 
 ```powershell
-dotnet build PriceWise.slnx
+.\scripts\coverage.ps1
 ```
+
+Gerar cobertura local no Linux/macOS:
+
+```bash
+./scripts/coverage.sh
+```
+
+Os resultados ficam em:
+
+```text
+artifacts/TestResults
+```
+
+## CI/CD
+
+O workflow `CI` roda em push e pull request para `main`:
+
+- Restore
+- Format check
+- Build em Release
+- Testes em Release
+- Publicacao de resultados como artifact
+- Validacao do Docker Compose
+
+Os runners do GitHub Actions possuem Docker disponivel para os testes com Testcontainers.
+
+## Roadmap futuro
+
+- Implementar provider real de precos por loja.
+- Publicar imagem Docker em registry.
+- Adicionar deploy automatizado para ambiente cloud.
+- Criar painel frontend para consumo da API.
+- Adicionar notificacoes por WhatsApp ou Telegram.
+- Persistir historico detalhado de tentativas de envio da Outbox.
+- Adicionar dashboards externos com Prometheus/Grafana.
+
+## Portfolio tecnico
+
+### Problemas resolvidos
+
+- Monitorar produtos e lojas por usuario com isolamento de dados.
+- Registrar historico de precos e gerar indicadores consolidados.
+- Disparar alertas sem bloquear o fluxo principal da API.
+- Operar integracoes externas com tolerancia a falhas.
+- Entregar ambiente local reproduzivel para avaliacao tecnica.
+
+### Decisoes arquiteturais
+
+- Minimal API para endpoints enxutos e diretos.
+- Dapper para controle explicito de SQL e performance.
+- FluentMigrator para versionamento de banco.
+- Result Pattern para reduzir excecoes em regras de aplicacao.
+- Outbox Pattern para robustez em Webhook e Email.
+- Redis para cache distribuido de consultas frequentes.
+- Quartz.NET para jobs recorrentes.
+- OpenTelemetry para traces e metricas.
+
+### Principais desafios
+
+- Manter baixo acoplamento entre modulos de negocio e infraestrutura.
+- Garantir que mensagens ao usuario fiquem em portugues enquanto o codigo permanece em ingles.
+- Evitar vazamento de dados entre usuarios nas consultas e no cache.
+- Projetar retries sem duplicar notificacoes.
+- Criar um ambiente Docker completo sem depender de instalacoes locais de PostgreSQL ou Redis.
+
+### Tecnologias demonstradas
+
+- .NET 10, ASP.NET Core Minimal API e JWT.
+- PostgreSQL, Dapper e FluentMigrator.
+- Redis, Quartz.NET, OpenTelemetry e Serilog.
+- MailKit, Webhook HTTP e Outbox Pattern.
+- xUnit, FluentAssertions, Testcontainers e GitHub Actions.
+- Docker, Docker Compose, Scalar e Bruno.
+
+### Diferenciais tecnicos
+
+- Arquitetura em camadas clara para portfolio.
+- API versionada com respostas padronizadas.
+- Auditoria com correlationId e sanitizacao de dados sensiveis.
+- Observabilidade pronta para investigacao de problemas.
+- Colecao de API versionada com fluxo de login.
+- Ambiente completo para demonstracao com um unico comando.

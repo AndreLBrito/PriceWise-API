@@ -11,17 +11,35 @@ namespace PriceWise.Tests.Integration;
 
 public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private readonly PostgreSqlContainer postgresContainer = new PostgreSqlBuilder("postgres:18-alpine")
-        .WithDatabase("pricewise_tests")
-        .WithUsername("pricewise")
-        .WithPassword("pricewise")
-        .Build();
+    private const string ExternalConnectionStringEnvironmentVariable = "PRICEWISE_TEST_POSTGRES_CONNECTION";
 
-    public string ConnectionString => postgresContainer.GetConnectionString();
+    private readonly PostgreSqlContainer? postgresContainer;
+    private readonly string? externalConnectionString;
+
+    public IntegrationTestFactory()
+    {
+        externalConnectionString = Environment.GetEnvironmentVariable(ExternalConnectionStringEnvironmentVariable);
+
+        if (string.IsNullOrWhiteSpace(externalConnectionString))
+        {
+            postgresContainer = new PostgreSqlBuilder("postgres:18-alpine")
+                .WithDatabase("pricewise_tests")
+                .WithUsername("pricewise")
+                .WithPassword("pricewise")
+                .Build();
+        }
+    }
+
+    public string ConnectionString => externalConnectionString ?? postgresContainer!.GetConnectionString();
 
     public async Task InitializeAsync()
     {
-        await postgresContainer.StartAsync();
+        if (postgresContainer is not null)
+        {
+            await postgresContainer.StartAsync();
+        }
+
+        await WaitForDatabaseAsync();
 
         using var scope = Services.CreateScope();
         var migrationRunner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
@@ -30,7 +48,11 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLife
 
     public new async Task DisposeAsync()
     {
-        await postgresContainer.DisposeAsync();
+        if (postgresContainer is not null)
+        {
+            await postgresContainer.DisposeAsync();
+        }
+
         await base.DisposeAsync();
     }
 
@@ -38,6 +60,8 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLife
     {
         const string sql = """
             truncate table
+                outbox_messages,
+                audit_logs,
                 alert_notifications,
                 notification_channels,
                 price_check_executions,
@@ -54,6 +78,28 @@ public class IntegrationTestFactory : WebApplicationFactory<Program>, IAsyncLife
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand(sql, connection);
         await command.ExecuteNonQueryAsync();
+    }
+
+    private async Task WaitForDatabaseAsync()
+    {
+        const int maxAttempts = 30;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                await using var connection = new NpgsqlConnection(ConnectionString);
+                await connection.OpenAsync();
+                return;
+            }
+            catch (NpgsqlException) when (attempt < maxAttempts)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1));
+            }
+        }
+
+        await using var finalConnection = new NpgsqlConnection(ConnectionString);
+        await finalConnection.OpenAsync();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)

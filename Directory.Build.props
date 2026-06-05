@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <NoWarn>$(NoWarn);CA1000;CA1305;CA1707;CA1711;CA1716;CA1848;CA1873</NoWarn>
+  </PropertyGroup>
+</Project>

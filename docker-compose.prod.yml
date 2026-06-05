@@ -1,26 +1,23 @@
 services:
   pricewise-api:
-    image: pricewise-api:local
-    container_name: pricewise-api
+    image: ${PRICEWISE_API_IMAGE:-pricewise-api:prod}
     build:
       context: .
       dockerfile: Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
-      Database__ConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB:-pricewise};Username=${POSTGRES_USER:-pricewise};Password=${POSTGRES_PASSWORD:-pricewise}
+      Database__ConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       Redis__Enabled: ${REDIS_ENABLED:-true}
       Redis__ConnectionString: redis:6379
       Jwt__Issuer: ${JWT_ISSUER:-PriceWise}
       Jwt__Audience: ${JWT_AUDIENCE:-PriceWise}
-      Jwt__Secret: ${JWT_SECRET:-pricewise-development-secret-key-change-me}
-      Jwt__AccessTokenExpirationMinutes: ${JWT_ACCESS_TOKEN_EXPIRATION_MINUTES:-60}
+      Jwt__Secret: ${JWT_SECRET}
+      Jwt__AccessTokenExpirationMinutes: ${JWT_ACCESS_TOKEN_EXPIRATION_MINUTES:-30}
       Jwt__RefreshTokenExpirationDays: ${JWT_REFRESH_TOKEN_EXPIRATION_DAYS:-7}
       AuthenticationSecurity__MaxFailedLoginAttempts: ${AUTHENTICATION_SECURITY_MAX_FAILED_LOGIN_ATTEMPTS:-5}
       AuthenticationSecurity__LockoutMinutes: ${AUTHENTICATION_SECURITY_LOCKOUT_MINUTES:-15}
-      AdminSeed__Enabled: ${ADMIN_SEED_ENABLED:-true}
-      AdminSeed__Email: ${ADMIN_SEED_EMAIL:-admin@pricewise.com}
-      AdminSeed__Password: ${ADMIN_SEED_PASSWORD:-Admin@123456}
+      AdminSeed__Enabled: ${ADMIN_SEED_ENABLED:-false}
       Telemetry__Enabled: ${TELEMETRY_ENABLED:-true}
       Telemetry__ServiceName: ${TELEMETRY_SERVICE_NAME:-PriceWise.Api}
       Telemetry__ServiceVersion: ${TELEMETRY_SERVICE_VERSION:-1.0.0}
@@ -47,18 +44,14 @@ services:
       RateLimiting__GeneralWindowInMinutes: ${RATE_LIMITING_GENERAL_WINDOW_IN_MINUTES:-1}
       RateLimiting__PriceCheckPermitLimit: ${RATE_LIMITING_PRICE_CHECK_PERMIT_LIMIT:-3}
       RateLimiting__PriceCheckWindowInMinutes: ${RATE_LIMITING_PRICE_CHECK_WINDOW_IN_MINUTES:-5}
-      DataSeed__Enabled: ${DATA_SEED_ENABLED:-true}
-      DataSeed__CreateDemoUser: ${DATA_SEED_CREATE_DEMO_USER:-true}
-      DataSeed__DemoUserEmail: ${DATA_SEED_DEMO_USER_EMAIL:-demo@pricewise.com}
-      DataSeed__DemoUserPassword: ${DATA_SEED_DEMO_USER_PASSWORD:-Demo@123456}
-      DataSeed__CreateDemoData: ${DATA_SEED_CREATE_DEMO_DATA:-true}
+      DataSeed__Enabled: ${DATA_SEED_ENABLED:-false}
       WebhookNotifications__Enabled: ${WEBHOOK_NOTIFICATIONS_ENABLED:-true}
       WebhookNotifications__TimeoutInSeconds: ${WEBHOOK_NOTIFICATIONS_TIMEOUT_IN_SECONDS:-10}
       WebhookNotifications__MaxRetryAttempts: ${WEBHOOK_NOTIFICATIONS_MAX_RETRY_ATTEMPTS:-3}
       EmailNotifications__Enabled: ${EMAIL_NOTIFICATIONS_ENABLED:-false}
-      EmailNotifications__Host: ${EMAIL_NOTIFICATIONS_HOST:-mailpit}
-      EmailNotifications__Port: ${EMAIL_NOTIFICATIONS_PORT:-1025}
-      EmailNotifications__UseSsl: ${EMAIL_NOTIFICATIONS_USE_SSL:-false}
+      EmailNotifications__Host: ${EMAIL_NOTIFICATIONS_HOST:-}
+      EmailNotifications__Port: ${EMAIL_NOTIFICATIONS_PORT:-587}
+      EmailNotifications__UseSsl: ${EMAIL_NOTIFICATIONS_USE_SSL:-true}
       EmailNotifications__UserName: ${EMAIL_NOTIFICATIONS_USERNAME:-}
       EmailNotifications__Password: ${EMAIL_NOTIFICATIONS_PASSWORD:-}
       EmailNotifications__FromName: ${EMAIL_NOTIFICATIONS_FROM_NAME:-PriceWise}
@@ -74,28 +67,23 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      jaeger:
-        condition: service_started
-      mailpit:
-        condition: service_started
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "timeout 5 bash -c \"exec 3<>/dev/tcp/127.0.0.1/8080; printf 'GET /health HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '200 OK' <&3\""]
-      interval: 10s
+      interval: 30s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 40s
 
   postgres:
     image: postgres:18-alpine
-    container_name: postgres
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-pricewise}
-      POSTGRES_USER: ${POSTGRES_USER:-pricewise}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pricewise}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - pricewise-postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
@@ -104,34 +92,15 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: redis
     command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - pricewise-redis-data:/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-
-  jaeger:
-    image: jaegertracing/all-in-one:1.57
-    container_name: jaeger
-    environment:
-      COLLECTOR_OTLP_ENABLED: "true"
-    ports:
-      - "${JAEGER_UI_PORT:-16686}:16686"
-      - "${JAEGER_OTLP_GRPC_PORT:-4317}:4317"
-      - "${JAEGER_OTLP_HTTP_PORT:-4318}:4318"
-
-  mailpit:
-    image: axllent/mailpit:v1.21
-    container_name: mailpit
-    ports:
-      - "${MAILPIT_SMTP_PORT:-1025}:1025"
-      - "${MAILPIT_UI_PORT:-8025}:8025"
 
 volumes:
   pricewise-postgres-data:

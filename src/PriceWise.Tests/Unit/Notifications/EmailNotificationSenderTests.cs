@@ -5,6 +5,9 @@ using MimeKit;
 using PriceWise.Application.Abstractions.Repositories;
 using PriceWise.Application.Abstractions.Notifications;
 using PriceWise.Application.Abstractions.Telemetry;
+using PriceWise.Application.Auditing;
+using PriceWise.Application.Auditing.Dtos;
+using PriceWise.Application.Common;
 using PriceWise.Domain.Entities;
 using PriceWise.Domain.Enums;
 using PriceWise.Infrastructure.Notifications;
@@ -125,7 +128,8 @@ public sealed class EmailNotificationSenderTests
                 MaxRetryAttempts = maxRetryAttempts
             }),
             NullLogger<EmailNotificationSender>.Instance,
-            new NoOpApplicationTelemetry());
+            new NoOpApplicationTelemetry(),
+            new FakeAuditLogService());
     }
 
     private static NotificationDelivery CreateDelivery(bool inactiveChannel = false)
@@ -274,5 +278,30 @@ public sealed class EmailNotificationSenderTests
         public static readonly Guid PriceAlertId = Guid.Parse("30000000-0000-0000-0000-000000000001");
         public static readonly Guid PriceHistoryId = Guid.Parse("40000000-0000-0000-0000-000000000001");
         public static readonly Guid NotificationId = Guid.Parse("50000000-0000-0000-0000-000000000001");
+    }
+
+    private sealed class FakeAuditLogService : IAuditLogService
+    {
+        public List<AuditLogEntry> Entries { get; } = [];
+
+        public Task RecordAsync(AuditLogEntry entry, CancellationToken cancellationToken = default)
+        {
+            Entries.Add(entry);
+
+            return Task.CompletedTask;
+        }
+
+        public Task<Result<PagedResponse<AuditLogResponse>>> ListAsync(
+            AuditLogListRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Result<PagedResponse<AuditLogResponse>>.Success(
+                PagedResponse<AuditLogResponse>.Create([], 1, 20, 0)));
+        }
+
+        public Task<Result<AuditLogResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Result<AuditLogResponse>.Failure(AuditLogErrors.AuditLogNotFound));
+        }
     }
 }

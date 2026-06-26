@@ -14,7 +14,7 @@ public static class PriceAlertEndpoints
 {
     public static IEndpointRouteBuilder MapPriceAlertEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/price-alerts")
+        var group = app.MapGroup("/api/v1/price-alerts")
             .WithTags("Alertas de preço")
             .RequireAuthorization(AuthorizationPolicyNames.AuthenticatedUser)
             .RequireRateLimiting(RateLimitPolicyNames.General);
@@ -76,7 +76,7 @@ public static class PriceAlertEndpoints
             result.Value.Id,
             NewValues: result.Value), cancellationToken);
 
-        return Results.Created($"/api/price-alerts/{result.Value.Id}", ApiResponse<PriceAlertResponse>.Ok(result.Value));
+        return Results.Created($"/api/v1/price-alerts/{result.Value.Id}", ApiResponse<PriceAlertResponse>.Ok(result.Value));
     }
 
     private static async Task<IResult> ListAsync(

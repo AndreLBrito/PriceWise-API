@@ -14,7 +14,7 @@ public static class NotificationChannelEndpoints
 {
     public static IEndpointRouteBuilder MapNotificationChannelEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/notification-channels")
+        var group = app.MapGroup("/api/v1/notification-channels")
             .WithTags("Canais de notificação")
             .RequireAuthorization(AuthorizationPolicyNames.AuthenticatedUser)
             .RequireRateLimiting(RateLimitPolicyNames.General);
@@ -77,7 +77,7 @@ public static class NotificationChannelEndpoints
             NewValues: result.Value), cancellationToken);
 
         return Results.Created(
-            $"/api/notification-channels/{result.Value.Id}",
+            $"/api/v1/notification-channels/{result.Value.Id}",
             ApiResponse<NotificationChannelResponse>.Ok(result.Value));
     }
 

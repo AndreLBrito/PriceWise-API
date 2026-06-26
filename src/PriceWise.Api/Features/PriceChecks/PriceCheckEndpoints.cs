@@ -13,7 +13,7 @@ public static class PriceCheckEndpoints
 {
     public static IEndpointRouteBuilder MapPriceCheckEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/price-check")
+        var group = app.MapGroup("/api/v1/price-check")
             .WithTags("Verificação de preços")
             .RequireAuthorization(AuthorizationPolicyNames.PriceCheckManagement);
 

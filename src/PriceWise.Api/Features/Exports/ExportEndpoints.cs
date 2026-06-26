@@ -13,7 +13,7 @@ public static class ExportEndpoints
 {
     public static IEndpointRouteBuilder MapExportEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/exports")
+        var group = app.MapGroup("/api/v1/exports")
             .WithTags("Exportações")
             .RequireAuthorization(AuthorizationPolicyNames.AuthenticatedUser)
             .RequireRateLimiting(RateLimitPolicyNames.General);

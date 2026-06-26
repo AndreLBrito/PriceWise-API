@@ -11,7 +11,7 @@ public static class OutboxEndpoints
 {
     public static IEndpointRouteBuilder MapOutboxEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/admin/outbox")
+        var group = app.MapGroup("/api/v1/admin/outbox")
             .WithTags("Outbox")
             .RequireAuthorization(AuthorizationPolicyNames.AdminOnly)
             .RequireRateLimiting(RateLimitPolicyNames.General);

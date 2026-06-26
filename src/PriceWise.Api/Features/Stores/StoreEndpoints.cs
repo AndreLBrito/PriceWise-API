@@ -14,7 +14,7 @@ public static class StoreEndpoints
 {
     public static IEndpointRouteBuilder MapStoreEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/stores")
+        var group = app.MapGroup("/api/v1/stores")
             .WithTags("Lojas")
             .RequireAuthorization(AuthorizationPolicyNames.AuthenticatedUser)
             .RequireRateLimiting(RateLimitPolicyNames.General);
@@ -76,7 +76,7 @@ public static class StoreEndpoints
             result.Value.Id,
             NewValues: result.Value), cancellationToken);
 
-        return Results.Created($"/api/stores/{result.Value.Id}", ApiResponse<StoreResponse>.Ok(result.Value));
+        return Results.Created($"/api/v1/stores/{result.Value.Id}", ApiResponse<StoreResponse>.Ok(result.Value));
     }
 
     private static async Task<IResult> ListAsync(

@@ -12,7 +12,7 @@ public static class AlertNotificationEndpoints
 {
     public static IEndpointRouteBuilder MapAlertNotificationEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/alert-notifications")
+        var group = app.MapGroup("/api/v1/alert-notifications")
             .WithTags("Notificações de alerta")
             .RequireAuthorization(AuthorizationPolicyNames.AuthenticatedUser)
             .RequireRateLimiting(RateLimitPolicyNames.General);

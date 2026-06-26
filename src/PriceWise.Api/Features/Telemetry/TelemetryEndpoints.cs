@@ -10,7 +10,7 @@ public static class TelemetryEndpoints
 {
     public static IEndpointRouteBuilder MapTelemetryEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/telemetry")
+        var group = app.MapGroup("/api/v1/telemetry")
             .WithTags("Telemetria")
             .RequireAuthorization(AuthorizationPolicyNames.TelemetryManagement)
             .RequireRateLimiting(RateLimitPolicyNames.General);

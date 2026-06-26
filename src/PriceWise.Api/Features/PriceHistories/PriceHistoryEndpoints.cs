@@ -14,14 +14,14 @@ public static class PriceHistoryEndpoints
 {
     public static IEndpointRouteBuilder MapPriceHistoryEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/price-histories", CreateAsync)
+        app.MapPost("/api/v1/price-histories", CreateAsync)
             .WithTags("Histórico de preços")
             .WithName("CreatePriceHistory")
             .WithSummary("Registra um histórico de preço")
             .RequireAuthorization(AuthorizationPolicyNames.AuthenticatedUser)
             .RequireRateLimiting(RateLimitPolicyNames.General);
 
-        var group = app.MapGroup("/api/products/{productId:guid}/price-histories")
+        var group = app.MapGroup("/api/v1/products/{productId:guid}/price-histories")
             .WithTags("Histórico de preços")
             .RequireAuthorization(AuthorizationPolicyNames.AuthenticatedUser);
 
@@ -79,7 +79,7 @@ public static class PriceHistoryEndpoints
             NewValues: result.Value), cancellationToken);
 
         return Results.Created(
-            $"/api/products/{result.Value.ProductId}/price-histories",
+            $"/api/v1/products/{result.Value.ProductId}/price-histories",
             ApiResponse<PriceHistoryResponse>.Ok(result.Value));
     }
 

@@ -63,7 +63,7 @@ try
             httpContext.Response.StatusCode));
     });
     app.UseMiddleware<PriceWise.Api.Telemetry.CorrelationIdMiddleware>();
-    app.UseApiVersionPrefix();
+    app.UseRouting();
     if (app.Environment.IsDevelopment())
     {
         app.UseCors(PriceWise.Api.Cors.ApiCorsPolicyNames.Development);

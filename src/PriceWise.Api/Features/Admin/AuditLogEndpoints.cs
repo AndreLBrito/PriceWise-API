@@ -11,7 +11,7 @@ public static class AuditLogEndpoints
 {
     public static IEndpointRouteBuilder MapAuditLogEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/admin/audit-logs")
+        var group = app.MapGroup("/api/v1/admin/audit-logs")
             .WithTags("Auditoria")
             .RequireAuthorization(AuthorizationPolicyNames.AdminOnly)
             .RequireRateLimiting(RateLimitPolicyNames.General);

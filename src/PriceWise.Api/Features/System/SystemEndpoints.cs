@@ -9,7 +9,7 @@ public static class SystemEndpoints
 {
     public static IEndpointRouteBuilder MapSystemEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/system")
+        var group = app.MapGroup("/api/v1/system")
             .WithTags("Sistema");
 
         group.MapGet("/info", (IHostEnvironment environment) =>

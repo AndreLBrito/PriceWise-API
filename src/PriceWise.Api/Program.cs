@@ -20,6 +20,7 @@ try
     builder.Services.AddApi();
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.AddPriceWiseCors(builder.Configuration);
     builder.Services.AddApiAuthentication(builder.Configuration);
     builder.Services.AddApiAuthorization();
     builder.Services.AddPriceWiseRateLimiting(builder.Configuration);
@@ -63,6 +64,11 @@ try
     });
     app.UseMiddleware<PriceWise.Api.Telemetry.CorrelationIdMiddleware>();
     app.UseApiVersionPrefix();
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseCors(PriceWise.Api.Cors.ApiCorsPolicyNames.Development);
+    }
+
     app.UseAuthentication();
     app.UseRateLimiter();
     app.UseAuthorization();

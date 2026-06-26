@@ -14,11 +14,11 @@ public sealed class PriceAlertEndpointTests
     }
 
     [Theory]
-    [InlineData("GET", "/api/price-alerts")]
-    [InlineData("GET", "/api/price-alerts/00000000-0000-0000-0000-000000000001")]
-    [InlineData("POST", "/api/price-alerts")]
-    [InlineData("PUT", "/api/price-alerts/00000000-0000-0000-0000-000000000001")]
-    [InlineData("DELETE", "/api/price-alerts/00000000-0000-0000-0000-000000000001")]
+    [InlineData("GET", "/api/v1/price-alerts")]
+    [InlineData("GET", "/api/v1/price-alerts/00000000-0000-0000-0000-000000000001")]
+    [InlineData("POST", "/api/v1/price-alerts")]
+    [InlineData("PUT", "/api/v1/price-alerts/00000000-0000-0000-0000-000000000001")]
+    [InlineData("DELETE", "/api/v1/price-alerts/00000000-0000-0000-0000-000000000001")]
     public async Task PriceAlertEndpointsRequireAuthentication(string method, string url)
     {
         var client = factory.CreateClient();

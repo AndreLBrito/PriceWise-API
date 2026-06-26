@@ -14,8 +14,8 @@ public sealed class PriceCheckEndpointTests
     }
 
     [Theory]
-    [InlineData("POST", "/api/price-check/run")]
-    [InlineData("GET", "/api/price-check/status")]
+    [InlineData("POST", "/api/v1/price-check/run")]
+    [InlineData("GET", "/api/v1/price-check/status")]
     public async Task PriceCheckEndpointsRequireAuthentication(string method, string url)
     {
         var client = factory.CreateClient();

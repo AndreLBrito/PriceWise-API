@@ -14,11 +14,11 @@ public sealed class StoreEndpointTests
     }
 
     [Theory]
-    [InlineData("GET", "/api/stores")]
-    [InlineData("GET", "/api/stores/00000000-0000-0000-0000-000000000001")]
-    [InlineData("POST", "/api/stores")]
-    [InlineData("PUT", "/api/stores/00000000-0000-0000-0000-000000000001")]
-    [InlineData("DELETE", "/api/stores/00000000-0000-0000-0000-000000000001")]
+    [InlineData("GET", "/api/v1/stores")]
+    [InlineData("GET", "/api/v1/stores/00000000-0000-0000-0000-000000000001")]
+    [InlineData("POST", "/api/v1/stores")]
+    [InlineData("PUT", "/api/v1/stores/00000000-0000-0000-0000-000000000001")]
+    [InlineData("DELETE", "/api/v1/stores/00000000-0000-0000-0000-000000000001")]
     public async Task StoreEndpointsRequireAuthentication(string method, string url)
     {
         var client = factory.CreateClient();

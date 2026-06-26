@@ -14,11 +14,11 @@ public sealed class NotificationChannelEndpointTests
     }
 
     [Theory]
-    [InlineData("GET", "/api/notification-channels")]
-    [InlineData("GET", "/api/notification-channels/00000000-0000-0000-0000-000000000001")]
-    [InlineData("POST", "/api/notification-channels")]
-    [InlineData("PUT", "/api/notification-channels/00000000-0000-0000-0000-000000000001")]
-    [InlineData("DELETE", "/api/notification-channels/00000000-0000-0000-0000-000000000001")]
+    [InlineData("GET", "/api/v1/notification-channels")]
+    [InlineData("GET", "/api/v1/notification-channels/00000000-0000-0000-0000-000000000001")]
+    [InlineData("POST", "/api/v1/notification-channels")]
+    [InlineData("PUT", "/api/v1/notification-channels/00000000-0000-0000-0000-000000000001")]
+    [InlineData("DELETE", "/api/v1/notification-channels/00000000-0000-0000-0000-000000000001")]
     public async Task NotificationChannelEndpointsRequireAuthentication(string method, string url)
     {
         var client = factory.CreateClient();

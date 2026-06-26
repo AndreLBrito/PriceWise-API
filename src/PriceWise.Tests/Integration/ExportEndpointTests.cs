@@ -14,10 +14,10 @@ public sealed class ExportEndpointTests
     }
 
     [Theory]
-    [InlineData("/api/exports/products.csv")]
-    [InlineData("/api/exports/stores.csv")]
-    [InlineData("/api/exports/price-histories.csv")]
-    [InlineData("/api/exports/alert-notifications.csv")]
+    [InlineData("/api/v1/exports/products.csv")]
+    [InlineData("/api/v1/exports/stores.csv")]
+    [InlineData("/api/v1/exports/price-histories.csv")]
+    [InlineData("/api/v1/exports/alert-notifications.csv")]
     public async Task ExportEndpointsRequireAuthentication(string url)
     {
         var client = factory.CreateClient();

@@ -14,11 +14,11 @@ public sealed class PriceHistoryEndpointTests
     }
 
     [Theory]
-    [InlineData("POST", "/api/price-histories")]
-    [InlineData("GET", "/api/products/00000000-0000-0000-0000-000000000001/price-histories")]
-    [InlineData("GET", "/api/products/00000000-0000-0000-0000-000000000001/price-histories/latest")]
-    [InlineData("GET", "/api/products/00000000-0000-0000-0000-000000000001/price-histories/lowest")]
-    [InlineData("GET", "/api/products/00000000-0000-0000-0000-000000000001/price-histories/average")]
+    [InlineData("POST", "/api/v1/price-histories")]
+    [InlineData("GET", "/api/v1/products/00000000-0000-0000-0000-000000000001/price-histories")]
+    [InlineData("GET", "/api/v1/products/00000000-0000-0000-0000-000000000001/price-histories/latest")]
+    [InlineData("GET", "/api/v1/products/00000000-0000-0000-0000-000000000001/price-histories/lowest")]
+    [InlineData("GET", "/api/v1/products/00000000-0000-0000-0000-000000000001/price-histories/average")]
     public async Task PriceHistoryEndpointsRequireAuthentication(string method, string url)
     {
         var client = factory.CreateClient();

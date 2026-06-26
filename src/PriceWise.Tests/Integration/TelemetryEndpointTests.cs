@@ -18,7 +18,7 @@ public sealed class TelemetryEndpointTests
     {
         var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/api/telemetry/info");
+        var response = await client.GetAsync("/api/v1/telemetry/info");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }

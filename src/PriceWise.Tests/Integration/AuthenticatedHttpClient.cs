@@ -29,7 +29,7 @@ public sealed class AuthenticatedHttpClient
             email ?? UniqueEmail(),
             password);
 
-        var response = await client.PostAsJsonAsync("/api/auth/register", request);
+        var response = await client.PostAsJsonAsync("/api/v1/auth/register", request);
         response.EnsureSuccessStatusCode();
 
         return await ReadDataAsync<AuthResponse>(response);
@@ -37,7 +37,7 @@ public sealed class AuthenticatedHttpClient
 
     public async Task<AuthResponse> LoginAsync(string email, string password = "Password123!")
     {
-        var response = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(email, password));
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(email, password));
         response.EnsureSuccessStatusCode();
 
         return await ReadDataAsync<AuthResponse>(response);
@@ -45,7 +45,7 @@ public sealed class AuthenticatedHttpClient
 
     public async Task<AuthResponse> RefreshTokenAsync(string refreshToken)
     {
-        var response = await client.PostAsJsonAsync("/api/auth/refresh-token", new RefreshTokenRequest(refreshToken));
+        var response = await client.PostAsJsonAsync("/api/v1/auth/refresh-token", new RefreshTokenRequest(refreshToken));
         response.EnsureSuccessStatusCode();
 
         return await ReadDataAsync<AuthResponse>(response);
@@ -53,7 +53,7 @@ public sealed class AuthenticatedHttpClient
 
     public async Task<HttpResponseMessage> LogoutAsync(string refreshToken)
     {
-        return await client.PostAsJsonAsync("/api/auth/logout", new LogoutRequest(refreshToken));
+        return await client.PostAsJsonAsync("/api/v1/auth/logout", new LogoutRequest(refreshToken));
     }
 
     public void Authenticate(string accessToken)
@@ -63,7 +63,7 @@ public sealed class AuthenticatedHttpClient
 
     public async Task<ProductResponse> CreateProductAsync(string? productUrl = null)
     {
-        var response = await client.PostAsJsonAsync("/api/products", new CreateProductRequest(
+        var response = await client.PostAsJsonAsync("/api/v1/products", new CreateProductRequest(
             "Notebook",
             "Notebook para testes",
             "PriceWise",
@@ -77,7 +77,7 @@ public sealed class AuthenticatedHttpClient
 
     public async Task<StoreResponse> CreateStoreAsync(string? baseUrl = null)
     {
-        var response = await client.PostAsJsonAsync("/api/stores", new CreateStoreRequest(
+        var response = await client.PostAsJsonAsync("/api/v1/stores", new CreateStoreRequest(
             "Loja Teste",
             baseUrl ?? $"https://store-{Guid.NewGuid():N}.example.com",
             "https://example.com/logo.png"));
@@ -92,7 +92,7 @@ public sealed class AuthenticatedHttpClient
         decimal price,
         DateTime? capturedAt = null)
     {
-        var response = await client.PostAsJsonAsync("/api/price-histories", new CreatePriceHistoryRequest(
+        var response = await client.PostAsJsonAsync("/api/v1/price-histories", new CreatePriceHistoryRequest(
             productId,
             storeId,
             price,
@@ -106,7 +106,7 @@ public sealed class AuthenticatedHttpClient
 
     public async Task<PriceAlertResponse> CreatePriceAlertAsync(Guid productId, decimal targetPrice)
     {
-        var response = await client.PostAsJsonAsync("/api/price-alerts", new CreatePriceAlertRequest(
+        var response = await client.PostAsJsonAsync("/api/v1/price-alerts", new CreatePriceAlertRequest(
             productId,
             targetPrice));
         response.EnsureSuccessStatusCode();
@@ -119,7 +119,7 @@ public sealed class AuthenticatedHttpClient
         string name,
         string destination)
     {
-        var response = await client.PostAsJsonAsync("/api/notification-channels", new CreateNotificationChannelRequest(
+        var response = await client.PostAsJsonAsync("/api/v1/notification-channels", new CreateNotificationChannelRequest(
             type,
             name,
             destination));

@@ -56,9 +56,9 @@ public sealed class RateLimitingEndpointTests
         });
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(Guid.NewGuid()));
 
-        await client.GetAsync("/api/telemetry/info");
+        await client.GetAsync("/api/v1/telemetry/info");
 
-        var response = await client.GetAsync("/api/telemetry/info");
+        var response = await client.GetAsync("/api/v1/telemetry/info");
 
         response.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
     }
@@ -73,9 +73,9 @@ public sealed class RateLimitingEndpointTests
         }, replaceServices: true);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateToken(Guid.NewGuid()));
 
-        await client.PostAsync("/api/price-check/run", null);
+        await client.PostAsync("/api/v1/price-check/run", null);
 
-        var response = await client.PostAsync("/api/price-check/run", null);
+        var response = await client.PostAsync("/api/v1/price-check/run", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
     }
@@ -99,7 +99,7 @@ public sealed class RateLimitingEndpointTests
 
     private static Task<HttpResponseMessage> PostLoginAsync(HttpClient client)
     {
-        return client.PostAsync("/api/auth/login", JsonContent.Create(new
+        return client.PostAsync("/api/v1/auth/login", JsonContent.Create(new
         {
             email = "user@example.com",
             password = "wrong-password"

@@ -44,7 +44,7 @@ public sealed class EndToEndFlowTests
         var refresh = await helper.RefreshTokenAsync(login.RefreshToken);
         var logout = await helper.LogoutAsync(refresh.RefreshToken);
         var reuseRefresh = await helper.Client.PostAsJsonAsync(
-            "/api/auth/refresh-token",
+            "/api/v1/auth/refresh-token",
             new { refreshToken = refresh.RefreshToken });
 
         register.UserId.Should().NotBeEmpty();
@@ -62,9 +62,9 @@ public sealed class EndToEndFlowTests
         var helper = await CreateAuthenticatedHelperAsync();
 
         var created = await helper.CreateProductAsync();
-        var list = await GetAsync<IReadOnlyCollection<ProductResponse>>(helper.Client, "/api/products");
-        var get = await GetAsync<ProductResponse>(helper.Client, $"/api/products/{created.Id}");
-        var updateResponse = await helper.Client.PutAsJsonAsync($"/api/products/{created.Id}", new
+        var list = await GetAsync<IReadOnlyCollection<ProductResponse>>(helper.Client, "/api/v1/products");
+        var get = await GetAsync<ProductResponse>(helper.Client, $"/api/v1/products/{created.Id}");
+        var updateResponse = await helper.Client.PutAsJsonAsync($"/api/v1/products/{created.Id}", new
         {
             name = "Notebook Atualizado",
             description = "Produto atualizado",
@@ -74,9 +74,9 @@ public sealed class EndToEndFlowTests
             imageUrl = created.ImageUrl
         });
         var updated = await AuthenticatedHttpClient.ReadDataAsync<ProductResponse>(updateResponse);
-        var deleteResponse = await helper.Client.DeleteAsync($"/api/products/{created.Id}");
-        var getDeleted = await helper.Client.GetAsync($"/api/products/{created.Id}");
-        var unauthenticated = await factory.CreateClient().GetAsync("/api/products");
+        var deleteResponse = await helper.Client.DeleteAsync($"/api/v1/products/{created.Id}");
+        var getDeleted = await helper.Client.GetAsync($"/api/v1/products/{created.Id}");
+        var unauthenticated = await factory.CreateClient().GetAsync("/api/v1/products");
 
         list.Should().ContainSingle(product => product.Id == created.Id);
         get.Id.Should().Be(created.Id);
@@ -93,18 +93,18 @@ public sealed class EndToEndFlowTests
         var helper = await CreateAuthenticatedHelperAsync();
 
         var created = await helper.CreateStoreAsync();
-        var list = await GetAsync<IReadOnlyCollection<StoreResponse>>(helper.Client, "/api/stores");
-        var get = await GetAsync<StoreResponse>(helper.Client, $"/api/stores/{created.Id}");
-        var updateResponse = await helper.Client.PutAsJsonAsync($"/api/stores/{created.Id}", new
+        var list = await GetAsync<IReadOnlyCollection<StoreResponse>>(helper.Client, "/api/v1/stores");
+        var get = await GetAsync<StoreResponse>(helper.Client, $"/api/v1/stores/{created.Id}");
+        var updateResponse = await helper.Client.PutAsJsonAsync($"/api/v1/stores/{created.Id}", new
         {
             name = "Loja Atualizada",
             baseUrl = created.BaseUrl,
             logoUrl = created.LogoUrl
         });
         var updated = await AuthenticatedHttpClient.ReadDataAsync<StoreResponse>(updateResponse);
-        var deleteResponse = await helper.Client.DeleteAsync($"/api/stores/{created.Id}");
-        var getDeleted = await helper.Client.GetAsync($"/api/stores/{created.Id}");
-        var unauthenticated = await factory.CreateClient().GetAsync("/api/stores");
+        var deleteResponse = await helper.Client.DeleteAsync($"/api/v1/stores/{created.Id}");
+        var getDeleted = await helper.Client.GetAsync($"/api/v1/stores/{created.Id}");
+        var unauthenticated = await factory.CreateClient().GetAsync("/api/v1/stores");
 
         list.Should().ContainSingle(store => store.Id == created.Id);
         get.Id.Should().Be(created.Id);
@@ -127,13 +127,13 @@ public sealed class EndToEndFlowTests
 
         var latest = await GetAsync<PriceHistoryResponse>(
             helper.Client,
-            $"/api/products/{product.Id}/price-histories/latest");
+            $"/api/v1/products/{product.Id}/price-histories/latest");
         var lowest = await GetAsync<PriceHistoryResponse>(
             helper.Client,
-            $"/api/products/{product.Id}/price-histories/lowest");
+            $"/api/v1/products/{product.Id}/price-histories/lowest");
         var average = await GetAsync<AveragePriceHistoryResponse>(
             helper.Client,
-            $"/api/products/{product.Id}/price-histories/average");
+            $"/api/v1/products/{product.Id}/price-histories/average");
 
         latest.Price.Should().Be(80);
         lowest.Price.Should().Be(80);
@@ -150,7 +150,7 @@ public sealed class EndToEndFlowTests
         var productFromFirstUser = await firstUser.CreateProductAsync();
         var storeFromSecondUser = await secondUser.CreateStoreAsync();
 
-        var response = await secondUser.Client.PostAsJsonAsync("/api/price-histories", new
+        var response = await secondUser.Client.PostAsJsonAsync("/api/v1/price-histories", new
         {
             productId = productFromFirstUser.Id,
             storeId = storeFromSecondUser.Id,
@@ -175,8 +175,8 @@ public sealed class EndToEndFlowTests
         await helper.CreatePriceHistoryAsync(product.Id, store.Id, 90);
         var notifications = await GetAsync<IReadOnlyCollection<AlertNotificationResponse>>(
             helper.Client,
-            "/api/alert-notifications");
-        var duplicateHistoryIdResponse = await helper.Client.PostAsJsonAsync("/api/price-histories", new
+            "/api/v1/alert-notifications");
+        var duplicateHistoryIdResponse = await helper.Client.PostAsJsonAsync("/api/v1/price-histories", new
         {
             productId = product.Id,
             storeId = store.Id,
@@ -188,7 +188,7 @@ public sealed class EndToEndFlowTests
         duplicateHistoryIdResponse.EnsureSuccessStatusCode();
         var notificationsAfterSecondHistory = await GetAsync<IReadOnlyCollection<AlertNotificationResponse>>(
             helper.Client,
-            "/api/alert-notifications");
+            "/api/v1/alert-notifications");
 
         notifications.Should().ContainSingle(notification =>
             notification.PriceAlertId == alert.Id
@@ -210,7 +210,7 @@ public sealed class EndToEndFlowTests
         await helper.CreatePriceAlertAsync(product.Id, 100);
         await helper.CreatePriceHistoryAsync(product.Id, store.Id, 90);
 
-        var summary = await GetAsync<DashboardSummaryResponse>(helper.Client, "/api/dashboard/summary");
+        var summary = await GetAsync<DashboardSummaryResponse>(helper.Client, "/api/v1/dashboard/summary");
 
         summary.TotalProducts.Should().Be(1);
         summary.ActiveProducts.Should().Be(1);
@@ -238,20 +238,20 @@ public sealed class EndToEndFlowTests
             "Email",
             "Email",
             "user@example.com");
-        var invalidWebhook = await helper.Client.PostAsJsonAsync("/api/notification-channels", new
+        var invalidWebhook = await helper.Client.PostAsJsonAsync("/api/v1/notification-channels", new
         {
             type = "Webhook",
             name = "Webhook invalido",
             destination = "invalid-url"
         });
-        var invalidEmail = await helper.Client.PostAsJsonAsync("/api/notification-channels", new
+        var invalidEmail = await helper.Client.PostAsJsonAsync("/api/v1/notification-channels", new
         {
             type = "Email",
             name = "Email invalido",
             destination = "invalid-email"
         });
-        var deleteResponse = await helper.Client.DeleteAsync($"/api/notification-channels/{webhook.Id}");
-        var getDeleted = await helper.Client.GetAsync($"/api/notification-channels/{webhook.Id}");
+        var deleteResponse = await helper.Client.DeleteAsync($"/api/v1/notification-channels/{webhook.Id}");
+        var getDeleted = await helper.Client.GetAsync($"/api/v1/notification-channels/{webhook.Id}");
 
         webhook.Type.Should().Be("Webhook");
         email.Type.Should().Be("Email");

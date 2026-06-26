@@ -14,10 +14,10 @@ public sealed class DashboardEndpointTests
     }
 
     [Theory]
-    [InlineData("/api/dashboard/summary")]
-    [InlineData("/api/dashboard/products/00000000-0000-0000-0000-000000000001/summary")]
-    [InlineData("/api/dashboard/stores/00000000-0000-0000-0000-000000000001/summary")]
-    [InlineData("/api/dashboard/alerts/summary")]
+    [InlineData("/api/v1/dashboard/summary")]
+    [InlineData("/api/v1/dashboard/products/00000000-0000-0000-0000-000000000001/summary")]
+    [InlineData("/api/v1/dashboard/stores/00000000-0000-0000-0000-000000000001/summary")]
+    [InlineData("/api/v1/dashboard/alerts/summary")]
     public async Task DashboardEndpointsRequireAuthentication(string url)
     {
         var client = factory.CreateClient();

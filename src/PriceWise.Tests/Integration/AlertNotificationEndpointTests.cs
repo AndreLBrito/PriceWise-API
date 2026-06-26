@@ -14,8 +14,8 @@ public sealed class AlertNotificationEndpointTests
     }
 
     [Theory]
-    [InlineData("GET", "/api/alert-notifications")]
-    [InlineData("GET", "/api/alert-notifications/00000000-0000-0000-0000-000000000001")]
+    [InlineData("GET", "/api/v1/alert-notifications")]
+    [InlineData("GET", "/api/v1/alert-notifications/00000000-0000-0000-0000-000000000001")]
     public async Task AlertNotificationEndpointsRequireAuthentication(string method, string url)
     {
         var client = factory.CreateClient();

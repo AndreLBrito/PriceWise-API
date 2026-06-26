@@ -325,6 +325,15 @@ Para testar endpoints protegidos, faca login e use o token no formato:
 Bearer {accessToken}
 ```
 
+## CORS para o PriceWise Web
+
+Em `Development`, a API aceita requisicoes apenas das origins configuradas em `Cors:AllowedOrigins`. Por padrao, o front-end React pode ser executado em:
+
+- `http://localhost:5173`
+- `http://127.0.0.1:5173`
+
+A policy permite os headers `Authorization`, `Content-Type` e `X-Correlation-Id` e trata requisicoes preflight `OPTIONS`. Para adicionar outra origin, altere `appsettings.Development.json` ou use variaveis como `Cors__AllowedOrigins__0`.
+
 ## Jaeger
 
 No Docker Compose, o OpenTelemetry exporta traces para o Jaeger via OTLP:
@@ -379,6 +388,7 @@ Arquivos de exemplo:
 
 As principais secoes configuraveis sao:
 
+- `Cors`
 - `Database`
 - `Jwt`
 - `AuthenticationSecurity`

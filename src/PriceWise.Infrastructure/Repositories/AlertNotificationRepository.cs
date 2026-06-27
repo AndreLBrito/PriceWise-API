@@ -45,8 +45,8 @@ public sealed class AlertNotificationRepository : IAlertNotificationRepository
         var sortDirection = request.IsDescending ? "desc" : "asc";
         var whereSql = """
             where user_id = @UserId
-              and (@StartDate is null or triggered_at >= @StartDate)
-              and (@EndDate is null or triggered_at <= @EndDate)
+              and (cast(@StartDate as timestamp) is null or triggered_at >= @StartDate)
+              and (cast(@EndDate as timestamp) is null or triggered_at <= @EndDate)
             """;
         var countSql = $"select count(*) from alert_notifications {whereSql}";
         var listSql = $"""
@@ -213,7 +213,7 @@ public sealed class AlertNotificationRepository : IAlertNotificationRepository
             "targetprice" => "target_price",
             "triggeredat" => "triggered_at",
             "createdat" => "created_at_utc",
-            _ => "triggered_at"
+            _ => "created_at_utc"
         };
     }
 }

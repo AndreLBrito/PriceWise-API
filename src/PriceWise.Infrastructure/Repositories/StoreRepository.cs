@@ -44,10 +44,10 @@ public sealed class StoreRepository : IStoreRepository
         var whereSql = """
             where user_id = @UserId
               and (@IsActive is null or is_active = @IsActive)
-              and (@StartDate is null or created_at_utc >= @StartDate)
-              and (@EndDate is null or created_at_utc <= @EndDate)
+              and (cast(@StartDate as timestamp) is null or created_at_utc >= @StartDate)
+              and (cast(@EndDate as timestamp) is null or created_at_utc <= @EndDate)
               and (
-                  @Search is null
+                  cast(@Search as text) is null
                   or name ilike @Search
                   or base_url ilike @Search
               )
@@ -219,7 +219,7 @@ public sealed class StoreRepository : IStoreRepository
             "createdat" => "created_at_utc",
             "updatedat" => "updated_at_utc",
             "isactive" => "is_active",
-            _ => "name"
+            _ => "created_at_utc"
         };
     }
 }

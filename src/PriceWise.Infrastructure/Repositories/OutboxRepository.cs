@@ -53,10 +53,10 @@ public sealed class OutboxRepository : IOutboxRepository
         var whereSql = """
             where (@Status is null or status = @Status)
               and (@Type is null or type = @Type)
-              and (@StartDate is null or created_at_utc >= @StartDate)
-              and (@EndDate is null or created_at_utc <= @EndDate)
+              and (cast(@StartDate as timestamp) is null or created_at_utc >= @StartDate)
+              and (cast(@EndDate as timestamp) is null or created_at_utc <= @EndDate)
               and (
-                  @Search is null
+                  cast(@Search as text) is null
                   or type ilike @Search
                   or status ilike @Search
                   or coalesce(error_message, '') ilike @Search

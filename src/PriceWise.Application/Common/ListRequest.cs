@@ -16,5 +16,5 @@ public sealed record ListRequest(
 
     public int Offset => (NormalizedPage - 1) * NormalizedPageSize;
 
-    public bool IsDescending => string.Equals(SortDirection, "desc", StringComparison.OrdinalIgnoreCase);
+    public bool IsDescending => !string.Equals(SortDirection, "asc", StringComparison.OrdinalIgnoreCase);
 }

@@ -33,8 +33,8 @@ public sealed class ExportRepository : IExportRepository
                    updated_at_utc as UpdatedAtUtc
             from products
             where user_id = @UserId
-              and (@StartDate is null or created_at_utc >= @StartDate)
-              and (@EndDate is null or created_at_utc <= @EndDate)
+              and (cast(@StartDate as timestamp) is null or created_at_utc >= @StartDate)
+              and (cast(@EndDate as timestamp) is null or created_at_utc <= @EndDate)
               and (@ProductId is null or id = @ProductId)
             order by created_at_utc desc
             limit @MaxRows
@@ -63,8 +63,8 @@ public sealed class ExportRepository : IExportRepository
                    updated_at_utc as UpdatedAtUtc
             from stores
             where user_id = @UserId
-              and (@StartDate is null or created_at_utc >= @StartDate)
-              and (@EndDate is null or created_at_utc <= @EndDate)
+              and (cast(@StartDate as timestamp) is null or created_at_utc >= @StartDate)
+              and (cast(@EndDate as timestamp) is null or created_at_utc <= @EndDate)
               and (@StoreId is null or id = @StoreId)
             order by created_at_utc desc
             limit @MaxRows
@@ -98,8 +98,8 @@ public sealed class ExportRepository : IExportRepository
             inner join products p on p.id = ph.product_id and p.user_id = ph.user_id
             inner join stores s on s.id = ph.store_id and s.user_id = ph.user_id
             where ph.user_id = @UserId
-              and (@StartDate is null or ph.captured_at >= @StartDate)
-              and (@EndDate is null or ph.captured_at <= @EndDate)
+              and (cast(@StartDate as timestamp) is null or ph.captured_at >= @StartDate)
+              and (cast(@EndDate as timestamp) is null or ph.captured_at <= @EndDate)
               and (@ProductId is null or ph.product_id = @ProductId)
               and (@StoreId is null or ph.store_id = @StoreId)
             order by ph.captured_at desc
@@ -133,8 +133,8 @@ public sealed class ExportRepository : IExportRepository
             inner join products p on p.id = an.product_id and p.user_id = an.user_id
             inner join price_histories ph on ph.id = an.price_history_id and ph.user_id = an.user_id
             where an.user_id = @UserId
-              and (@StartDate is null or an.triggered_at >= @StartDate)
-              and (@EndDate is null or an.triggered_at <= @EndDate)
+              and (cast(@StartDate as timestamp) is null or an.triggered_at >= @StartDate)
+              and (cast(@EndDate as timestamp) is null or an.triggered_at <= @EndDate)
               and (@ProductId is null or an.product_id = @ProductId)
               and (@StoreId is null or ph.store_id = @StoreId)
             order by an.triggered_at desc

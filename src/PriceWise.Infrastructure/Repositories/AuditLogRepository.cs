@@ -60,10 +60,10 @@ public sealed class AuditLogRepository : IAuditLogRepository
               and (@Action is null or action = @Action)
               and (@EntityName is null or entity_name = @EntityName)
               and (@EntityId is null or entity_id = @EntityId)
-              and (@StartDate is null or created_at_utc >= @StartDate)
-              and (@EndDate is null or created_at_utc <= @EndDate)
+              and (cast(@StartDate as timestamp) is null or created_at_utc >= @StartDate)
+              and (cast(@EndDate as timestamp) is null or created_at_utc <= @EndDate)
               and (
-                  @Search is null
+                  cast(@Search as text) is null
                   or action ilike @Search
                   or entity_name ilike @Search
                   or coalesce(correlation_id, '') ilike @Search

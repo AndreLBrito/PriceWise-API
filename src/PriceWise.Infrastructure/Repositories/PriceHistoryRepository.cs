@@ -47,10 +47,10 @@ public sealed class PriceHistoryRepository : IPriceHistoryRepository
         var whereSql = """
             where user_id = @UserId
               and product_id = @ProductId
-              and (@StartDate is null or captured_at >= @StartDate)
-              and (@EndDate is null or captured_at <= @EndDate)
+              and (cast(@StartDate as timestamp) is null or captured_at >= @StartDate)
+              and (cast(@EndDate as timestamp) is null or captured_at <= @EndDate)
               and (
-                  @Search is null
+                  cast(@Search as text) is null
                   or currency ilike @Search
                   or coalesce(source_url, '') ilike @Search
               )
@@ -243,7 +243,7 @@ public sealed class PriceHistoryRepository : IPriceHistoryRepository
             "currency" => "currency",
             "capturedat" => "captured_at",
             "createdat" => "created_at_utc",
-            _ => "captured_at"
+            _ => "created_at_utc"
         };
     }
 }

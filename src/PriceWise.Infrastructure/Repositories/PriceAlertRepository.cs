@@ -44,8 +44,8 @@ public sealed class PriceAlertRepository : IPriceAlertRepository
         var whereSql = """
             where user_id = @UserId
               and (@IsActive is null or is_active = @IsActive)
-              and (@StartDate is null or created_at_utc >= @StartDate)
-              and (@EndDate is null or created_at_utc <= @EndDate)
+              and (cast(@StartDate as timestamp) is null or created_at_utc >= @StartDate)
+              and (cast(@EndDate as timestamp) is null or created_at_utc <= @EndDate)
             """;
         var countSql = $"select count(*) from price_alerts {whereSql}";
         var listSql = $"""
